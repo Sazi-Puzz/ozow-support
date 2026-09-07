@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "OS-15500 — Where the Blank Identifier Came From and Where the Money Went",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "origin",
+        "label": "Origin of the blank value",
+        "focus": [
+          "producer",
+          "dto",
+          "txproc",
+          "cardtx"
+        ],
+        "note": "MoneyOut copies the value through unchanged, so the empty string is created upstream."
+      },
+      {
+        "id": "consequence",
+        "label": "Money out, float untouched",
+        "focus": [
+          "gate",
+          "floats",
+          "bankacct",
+          "recon"
+        ],
+        "note": "The payout completes while the float write never happens, leaving bank recon as the only detector."
+      }
+    ],
+    "viewBox": [
+      1080,
+      800
+    ]
+  },
+  "stages": [
+    {
+      "label": "Card feed"
+    },
+    {
+      "label": "MoneyOut ingest"
+    },
+    {
+      "label": "Store"
+    },
+    {
+      "label": "Refund gate"
+    },
+    {
+      "label": "Outcome"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "producer",
+      "type": "external",
+      "label": "Card producer",
+      "sublabel": "not yet identified",
+      "stage": 0,
+      "row": 1,
+      "tag": "changed 2026-08-04"
+    },
+    {
+      "id": "dto",
+      "type": "backend",
+      "label": "ExternalTransactionDto",
+      "sublabel": "CardMerchantIdentifier",
+      "stage": 1,
+      "row": 0,
+      "width": 144
+    },
+    {
+      "id": "txproc",
+      "type": "backend",
+      "label": "TransactionProcessor",
+      "sublabel": "copies value unchanged",
+      "stage": 1,
+      "row": 3,
+      "width": 132
+    },
+    {
+      "id": "cardtx",
+      "type": "database",
+      "label": "cardtransactions",
+      "sublabel": "merchantidentifier",
+      "stage": 2,
+      "row": 1,
+      "tag": "empty string"
+    },
+    {
+      "id": "gate",
+      "type": "security",
+      "label": "Float gate",
+      "sublabel": "RefundService.cs:1622",
+      "stage": 3,
+      "row": 0
+    },
+    {
+      "id": "floatsvc",
+      "type": "backend",
+      "label": "FloatService",
+      "sublabel": "aggregating branch",
+      "stage": 3,
+      "row": 3,
+      "tag": "defect 2 open"
+    },
+    {
+      "id": "floats",
+      "type": "database",
+      "label": "floats",
+      "sublabel": "balance never debited",
+      "stage": 4,
+      "row": 2,
+      "tag": "R31,803"
+    },
+    {
+      "id": "bankacct",
+      "type": "external",
+      "label": "Ozow bank account",
+      "sublabel": "real money leaves",
+      "stage": 4,
+      "row": 0
+    },
+    {
+      "id": "recon",
+      "type": "external",
+      "label": "Bank reconciliation",
+      "sublabel": "found it weeks later",
+      "stage": 4,
+      "row": 4,
+      "tag": "only detector"
+    }
+  ],
+  "flows": [
+    {
+      "id": "produce",
+      "from": "producer",
+      "to": "dto",
+      "label": "empty string, not null",
+      "classification": "upstream regression",
+      "variant": "security"
+    },
+    {
+      "id": "map",
+      "from": "dto",
+      "to": "txproc",
+      "label": "mapped one to one",
+      "classification": "no transform",
+      "labelDy": 24
+    },
+    {
+      "id": "persist",
+      "from": "txproc",
+      "to": "cardtx",
+      "label": "persisted as blank",
+      "classification": "unvalidated"
+    },
+    {
+      "id": "read",
+      "from": "cardtx",
+      "to": "gate",
+      "label": "read at refund time",
+      "classification": "null check only",
+      "variant": "emphasis"
+    },
+    {
+      "id": "nodebit",
+      "from": "gate",
+      "to": "floats",
+      "label": "debit skipped",
+      "classification": "silent",
+      "variant": "dashed"
+    },
+    {
+      "id": "stillpaid",
+      "from": "gate",
+      "to": "bankacct",
+      "label": "refund still paid",
+      "classification": "irreversible",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelDy": -28
+    },
+    {
+      "id": "postfix",
+      "from": "cardtx",
+      "to": "floatsvc",
+      "label": "blank now continues here",
+      "classification": "after the fix",
+      "variant": "dashed"
+    },
+    {
+      "id": "dropped",
+      "from": "floatsvc",
+      "to": "floats",
+      "label": "FloatId dropped",
+      "classification": "no audit event",
+      "variant": "security"
+    },
+    {
+      "id": "detect",
+      "from": "floats",
+      "to": "recon",
+      "label": "no matching debit",
+      "classification": "found weeks later",
+      "variant": "security",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "The value is not ours",
+      "items": [
+        "MoneyOut assigns CardMerchantIdentifier straight from the inbound DTO with no transform",
+        "That assignment has not changed since 2025-09-11, so the empty string is produced upstream",
+        "The producing service is still unidentified and is the one open item from the investigation"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Two changes, months apart",
+      "items": [
+        "2026-03-17 replaced a merchant allowlist with a bare null check, creating the latent flaw",
+        "2026-08-04 the feed began sending empty strings, which turned the flaw into daily loss",
+        "Neither change on its own would have lost a cent"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Detection was the real gap",
+      "items": [
+        "The refund API answered 200 and APM recorded the trace as healthy",
+        "No monitor watched the skip log, and none watched completed refunds with no float id",
+        "Bank reconciliation caught it, which is weeks of exposure by design"
+      ]
+    }
+  ]
+}

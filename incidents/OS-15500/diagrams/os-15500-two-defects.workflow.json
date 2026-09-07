@@ -1,0 +1,248 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "OS-15500 — Two Ways a Card Refund Escapes Float Deduction",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "defect-one",
+        "label": "Defect 1 — empty identifier",
+        "focus": [
+          "gate1",
+          "skip",
+          "loss"
+        ],
+        "note": "Fixed on 2026-09-04 by commit e391ed8b."
+      },
+      {
+        "id": "defect-two",
+        "label": "Defect 2 — aggregating merchant",
+        "focus": [
+          "floatpath",
+          "agg",
+          "loss"
+        ],
+        "note": "Still open, and now unmasked because defect 1 no longer short-circuits ahead of it."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "flow",
+      "label": "Refund path"
+    },
+    {
+      "id": "d1",
+      "label": "Defect 1 — blank MerchantIdentifier",
+      "variant": "exception"
+    },
+    {
+      "id": "d2",
+      "label": "Defect 2 — aggregating merchant",
+      "variant": "exception"
+    },
+    {
+      "id": "out",
+      "label": "Unrecovered money",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "intake",
+      "label": "Intake",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "gatephase",
+      "label": "Float gate",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "settle",
+      "label": "Settlement",
+      "fromCol": 4,
+      "toCol": 5
+    }
+  ],
+  "mainPath": [
+    "start",
+    "readmid",
+    "gate1",
+    "floatpath",
+    "deduct",
+    "correct"
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "lane": "flow",
+      "col": 0,
+      "type": "external",
+      "label": "Card refund",
+      "sublabel": "AddRefund request"
+    },
+    {
+      "id": "readmid",
+      "lane": "flow",
+      "col": 1,
+      "type": "database",
+      "label": "Read card txn",
+      "sublabel": "cardtransactions"
+    },
+    {
+      "id": "gate1",
+      "lane": "flow",
+      "col": 2,
+      "type": "security",
+      "label": "Identifier gate",
+      "sublabel": "RefundService.cs:1622",
+      "tag": "FIXED e391ed8b",
+      "width": 112
+    },
+    {
+      "id": "floatpath",
+      "lane": "flow",
+      "col": 3,
+      "type": "backend",
+      "label": "Resolve balance",
+      "sublabel": "GetMerchantAvailableBalance",
+      "width": 120
+    },
+    {
+      "id": "deduct",
+      "lane": "flow",
+      "col": 4,
+      "type": "backend",
+      "label": "Debit float",
+      "sublabel": "UpdateFloatBalance"
+    },
+    {
+      "id": "correct",
+      "lane": "flow",
+      "col": 5,
+      "type": "external",
+      "label": "Paid, float debited",
+      "sublabel": "intended outcome",
+      "width": 140
+    },
+    {
+      "id": "skip",
+      "lane": "d1",
+      "col": 3,
+      "type": "security",
+      "label": "Skip float update",
+      "sublabel": "history event 10",
+      "width": 126
+    },
+    {
+      "id": "agg",
+      "lane": "d2",
+      "col": 4,
+      "type": "security",
+      "label": "FloatId dropped",
+      "sublabel": "FloatService.cs:731",
+      "tag": "STILL OPEN",
+      "width": 112
+    },
+    {
+      "id": "loss",
+      "lane": "out",
+      "col": 5,
+      "type": "external",
+      "label": "Paid, float untouched",
+      "sublabel": "money already gone",
+      "tag": "R31,803 exposure",
+      "width": 154
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "readmid",
+      "role": "main"
+    },
+    {
+      "from": "readmid",
+      "to": "gate1",
+      "role": "main"
+    },
+    {
+      "from": "gate1",
+      "to": "floatpath",
+      "label": "identifier blank",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "from": "floatpath",
+      "to": "deduct",
+      "label": "float id resolved",
+      "role": "main"
+    },
+    {
+      "from": "deduct",
+      "to": "correct",
+      "role": "main"
+    },
+    {
+      "from": "gate1",
+      "to": "skip",
+      "label": "identifier present",
+      "role": "branch",
+      "variant": "security"
+    },
+    {
+      "from": "skip",
+      "to": "loss",
+      "role": "error",
+      "variant": "security"
+    },
+    {
+      "from": "floatpath",
+      "to": "agg",
+      "label": "merchant aggregates",
+      "role": "branch",
+      "variant": "security"
+    },
+    {
+      "from": "agg",
+      "to": "loss",
+      "role": "error",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Defect 1 — blank identifier (fixed)",
+      "items": [
+        "The guard asked whether MerchantIdentifier was non-null, and an empty string passes that test",
+        "From 2026-08-04 the upstream card feed sent empty strings, so every card refund took the skip branch",
+        "64 of the 71 completed misses came through here, and it leaves a SkipFloatUpdate history row"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Defect 2 — aggregating merchant (open)",
+      "items": [
+        "For an aggregating merchant with enough balance the balance result comes back without a FloatId",
+        "Validation still succeeds, so the deduction is skipped with no history row and no log line",
+        "Only Homefind24 qualifies today, and it remains actively aggregating"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Why the order matters now",
+      "items": [
+        "Before the fix, defect 1 short-circuited ahead of defect 2 and hid it",
+        "Blank identifiers now continue into the balance path, where defect 2 waits",
+        "Defect 2 is the more dangerous of the two because it leaves no audit trail at all"
+      ]
+    }
+  ]
+}

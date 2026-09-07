@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "OS-15500 — How a Card Refund Paid Out Without Debiting Float",
+    "viewBox": [1080, 820],
+    "column_fit": "spread",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "gate", "label": "The float gate", "focus": ["refundsvc", "mdb", "floatsvc"], "note": "The empty-string MerchantIdentifier satisfies the null check and the deduction is skipped." },
+      { "id": "money", "label": "Money leaves anyway", "focus": ["refundsvc", "bank", "api", "merchant"], "note": "The payout proceeds and the API answers 200 with no error." }
+    ]
+  },
+  "participants": [
+    { "id": "merchant", "type": "external", "label": "Merchant", "sublabel": "refund request" },
+    { "id": "api", "type": "frontend", "label": "MoneyOut API", "sublabel": "RefundController.AddRefund" },
+    { "id": "refundsvc", "type": "backend", "label": "RefundService", "sublabel": "HandleAddRefund" },
+    { "id": "mdb", "type": "database", "label": "MoneyOut DB", "sublabel": "cardtransactions / refunds" },
+    { "id": "floatsvc", "type": "backend", "label": "FloatService", "sublabel": "UpdateFloatBalance" },
+    { "id": "bank", "type": "external", "label": "Payout Provider", "sublabel": "card refund rail" }
+  ],
+  "segments": [
+    { "from": 150, "to": 330, "label": "Refund request" },
+    { "from": 350, "to": 470, "label": "Float gate — the defect" },
+    { "from": 490, "to": 700, "label": "Payout settles, caller sees success" }
+  ],
+  "messages": [
+    { "id": "post-refund", "from": "merchant", "to": "api", "y": 190, "label": "POST /api/refund/addrefund", "variant": "emphasis" },
+    { "id": "handle", "from": "api", "to": "refundsvc", "y": 236, "label": "HandleAddRefund()", "variant": "default" },
+    { "id": "read-card", "from": "refundsvc", "to": "mdb", "y": 282, "label": "GetCardTransactionById()", "variant": "default" },
+    { "id": "mid-empty", "from": "mdb", "to": "refundsvc", "y": 322, "label": "MerchantIdentifier = \"\"", "variant": "return", "note": "Empty string, not NULL — upstream card feed changed on 2026-08-04" },
+    { "id": "gate-skip", "from": "refundsvc", "to": "floatsvc", "y": 380, "label": "UpdateFloatBalance() never reached", "variant": "dashed", "note": "skipFloatChecks = (cardTransaction?.MerchantIdentifier != null) is true for \"\" — RefundService.cs:1622" },
+    { "id": "skip-history", "from": "refundsvc", "to": "mdb", "y": 432, "label": "RefundHistory: SkipFloatUpdate (10)", "variant": "security", "note": "Message: \"Merchant not in Ozow Financial flow\" — the only trace this class of loss leaves" },
+    { "id": "submit", "from": "refundsvc", "to": "bank", "y": 512, "label": "submit refund to provider", "variant": "emphasis" },
+    { "id": "paid", "from": "bank", "to": "refundsvc", "y": 560, "label": "paid — funds leave Ozow account", "variant": "return" },
+    { "id": "succeeded", "from": "refundsvc", "to": "api", "y": 612, "label": "result.Succeeded = true", "variant": "return" },
+    { "id": "http-ok", "from": "api", "to": "merchant", "y": 664, "label": "HTTP 200 · status ok · error null", "variant": "return", "note": "No error rate, no latency signature, no monitor — only bank recon can catch it" }
+  ],
+  "activations": [
+    { "participant": "api", "from": 232, "to": 670, "type": "frontend" },
+    { "participant": "refundsvc", "from": 278, "to": 618, "type": "backend" },
+    { "participant": "mdb", "from": 277, "to": 438, "type": "database" },
+    { "participant": "bank", "from": 507, "to": 566, "type": "external" }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "The defect",
+      "items": [
+        "An empty string is not null, so the guard treats it as a valid merchant identifier",
+        "The float deduction is skipped and the refund still pays out real money",
+        "FloatService is never entered — its lifeline stays inactive for the whole request"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Why nothing alerted",
+      "items": [
+        "The API returns HTTP 200 with status ok and error null",
+        "APM records the trace as healthy, so no error or latency signal exists",
+        "The single skip log line is info-level and had no monitor attached"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Fixed 2026-09-04",
+      "items": [
+        "Guard changed to !string.IsNullOrWhiteSpace(...) in commit e391ed8b",
+        "First correctly debited card refund after deploy: 2026-09-04 11:19:25 UTC",
+        "A real merchant identifier still skips float, which remains intended behaviour"
+      ]
+    }
+  ]
+}

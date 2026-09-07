@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "visual-check",
+  "evidenceKind": "automated-browser",
+  "status": "fail",
+  "visualReview": "pending",
+  "artifact": {
+    "path": "C:\\git\\ozow-support\\incidents\\OS-15500\\diagrams\\os-15500-silent-skip.sequence.html",
+    "sha256": "ed44d2f4fdb8e5468f09489ee68d0bc7e1af3207e09bf832a51a9ea0c2abf14e",
+    "bytes": 715034
+  },
+  "state": {
+    "detail": "read",
+    "motion": "still"
+  },
+  "chrome": {
+    "status": "available",
+    "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+  },
+  "diagnostics": [
+    {
+      "code": "viewer/visual-check-runtime",
+      "severity": "error",
+      "message": "visual-check could not complete its Chrome inspection.",
+      "subject": {
+        "artifact": "C:\\git\\ozow-support\\incidents\\OS-15500\\diagrams\\os-15500-silent-skip.sequence.html"
+      },
+      "evidence": {
+        "reason": "Chrome DevTools process exit failed: Chrome closed with exit code 0\nChrome process: exit code 0."
+      },
+      "supportedFixes": [
+        "resolve the reported Chrome inspection error, then rerun visual-check"
+      ]
+    }
+  ],
+  "containment": {
+    "status": "fail",
+    "viewports": []
+  },
+  "readability": {
+    "status": "fail",
+    "minimumProjectedNodeTextPx": 6,
+    "viewports": []
+  },
+  "viewerChrome": {
+    "status": "fail",
+    "viewports": []
+  },
+  "captures": {
+    "status": "fail",
+    "screenshots": [],
+    "contactSheet": null
+  },
+  "sidecars": {
+    "receipt": "os-15500-silent-skip.sequence.visual-check.json",
+    "contactSheet": "os-15500-silent-skip.sequence.visual-check.html"
+  },
+  "error": "Chrome DevTools process exit failed: Chrome closed with exit code 0\nChrome process: exit code 0."
+}
