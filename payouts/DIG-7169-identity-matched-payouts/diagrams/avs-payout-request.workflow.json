@@ -1,0 +1,306 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "AVS Payout Request — Identity Capture",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "capture",
+        "label": "Captured for AVS",
+        "focus": [
+          "merchant",
+          "validators",
+          "encrypt",
+          "payout",
+          "eligibility",
+          "avsrow"
+        ],
+        "note": "An AVS merchant supplying an account number, identity type and account type gets an AVS row at request time."
+      },
+      {
+        "id": "skipped",
+        "label": "Never reaches AVS",
+        "focus": [
+          "validators",
+          "reject",
+          "paytoid"
+        ],
+        "note": "Pay-to-ID intent skips AVS entirely; a missing AVS field is rejected before the payout is created."
+      },
+      {
+        "id": "degraded",
+        "label": "Eligibility lookup fails",
+        "focus": [
+          "eligibility",
+          "eligerror",
+          "avsrow",
+          "verifyreq"
+        ],
+        "note": "A bypass-table or cache failure is logged and treated as eligible, so the AVS data is still captured."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "api",
+      "label": "Payout API — RequestPayout"
+    },
+    {
+      "id": "avs",
+      "label": "AVS capture"
+    },
+    {
+      "id": "skip",
+      "label": "Not captured",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "intake",
+      "label": "Intake + validation",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "persist",
+      "label": "Encrypt + persist",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "avsphase",
+      "label": "AVS eligibility",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "merchant",
+    "validators",
+    "encrypt",
+    "payout",
+    "eligibility",
+    "avsrow"
+  ],
+  "semanticChecks": {
+    "allowedRoots": [
+      "merchant"
+    ],
+    "allowedTerminals": [
+      "avsrow",
+      "verifyreq",
+      "reject",
+      "paytoid"
+    ],
+    "requiredEdges": [
+      {
+        "from": "encrypt",
+        "to": "payout"
+      },
+      {
+        "from": "eligibility",
+        "to": "avsrow"
+      }
+    ],
+    "requiredPaths": [
+      {
+        "from": "merchant",
+        "to": "avsrow"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "merchant",
+      "lane": "api",
+      "col": 0,
+      "type": "external",
+      "label": "Merchant",
+      "sublabel": "account + ID",
+      "width": 128
+    },
+    {
+      "id": "validators",
+      "lane": "api",
+      "col": 1,
+      "type": "backend",
+      "label": "Validation chain",
+      "sublabel": "intent + AVS fields",
+      "tag": "SkipValidations bypasses",
+      "width": 140
+    },
+    {
+      "id": "encrypt",
+      "lane": "api",
+      "col": 2,
+      "type": "security",
+      "label": "KMS encrypt ID",
+      "sublabel": "PPI account key",
+      "width": 134
+    },
+    {
+      "id": "payout",
+      "lane": "api",
+      "col": 3,
+      "type": "database",
+      "label": "Payout row",
+      "sublabel": "ciphertext ID + type",
+      "width": 140
+    },
+    {
+      "id": "verifyreq",
+      "lane": "api",
+      "col": 5,
+      "type": "messagebus",
+      "label": "Verification request",
+      "sublabel": "always created",
+      "width": 144
+    },
+    {
+      "id": "eligibility",
+      "lane": "avs",
+      "col": 4,
+      "type": "backend",
+      "label": "AVS eligibility",
+      "sublabel": "flag + global bypass",
+      "width": 140
+    },
+    {
+      "id": "avsrow",
+      "lane": "avs",
+      "col": 5,
+      "type": "database",
+      "label": "AVS verification row",
+      "sublabel": "ID, doc + account type",
+      "width": 148
+    },
+    {
+      "id": "reject",
+      "lane": "skip",
+      "col": 1,
+      "type": "security",
+      "label": "Request rejected",
+      "sublabel": "missing or bad field",
+      "width": 140
+    },
+    {
+      "id": "paytoid",
+      "lane": "skip",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Pay-to-ID intent",
+      "sublabel": "ID, no account number",
+      "width": 144
+    },
+    {
+      "id": "eligerror",
+      "lane": "skip",
+      "col": 4,
+      "type": "security",
+      "label": "Lookup failed",
+      "sublabel": "treated as eligible",
+      "width": 132
+    }
+  ],
+  "edges": [
+    {
+      "id": "post",
+      "from": "merchant",
+      "to": "validators",
+      "label": "POST /Payouts",
+      "variant": "default"
+    },
+    {
+      "id": "validated",
+      "from": "validators",
+      "to": "encrypt",
+      "label": "fields present",
+      "variant": "emphasis"
+    },
+    {
+      "id": "stored",
+      "from": "encrypt",
+      "to": "payout",
+      "label": "ciphertext at rest",
+      "variant": "emphasis"
+    },
+    {
+      "id": "evaluate",
+      "from": "payout",
+      "to": "eligibility",
+      "label": "evaluate merchant",
+      "variant": "default"
+    },
+    {
+      "id": "capture",
+      "from": "eligibility",
+      "to": "avsrow",
+      "label": "eligible",
+      "variant": "emphasis"
+    },
+    {
+      "id": "rejected",
+      "from": "validators",
+      "to": "reject",
+      "label": "422",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "intent",
+      "from": "validators",
+      "to": "paytoid",
+      "label": "skips AVS rules",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "eligfail",
+      "from": "eligibility",
+      "to": "eligerror",
+      "label": "cache or DB error",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "failopen",
+      "from": "eligerror",
+      "to": "avsrow",
+      "label": "treated as eligible",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "queued",
+      "from": "payout",
+      "to": "verifyreq",
+      "label": "verification queued",
+      "variant": "dashed",
+      "role": "async"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "What request time decides",
+      "items": [
+        "The identity number is KMS-encrypted once, with PPI's account key, and is never stored in plaintext",
+        "An AVS row is written only when the merchant is eligible and the request carries AccountType and IdentityType",
+        "Pay-to-ID (ID with no account number) is a different product and is excluded from AVS"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Deliberate fail-open",
+      "items": [
+        "An eligibility lookup failure no longer fails the request; it warns and captures the AVS data anyway",
+        "Verification re-evaluates eligibility, so the final AVS decision is never taken here",
+        "AccountType lives only on the request and the AVS row — the Payout row cannot supply it later"
+      ]
+    }
+  ]
+}

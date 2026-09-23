@@ -1,0 +1,388 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "AVS at Verification — Outcomes and Failures",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "match",
+        "label": "Match path",
+        "focus": [
+          "response",
+          "decryptacct",
+          "eligibility",
+          "prepare",
+          "avscall",
+          "decision",
+          "success"
+        ],
+        "note": "An eligible payout is decrypted, sent to AVS, and continues on MATCH."
+      },
+      {
+        "id": "bypass",
+        "label": "Bypass outcomes",
+        "focus": [
+          "eligibility",
+          "notapplies",
+          "bypassed",
+          "unavailable",
+          "success"
+        ],
+        "note": "Three ways AVS is skipped: no settings, not eligible or globally bypassed, and the strict-merchant variant that fails instead."
+      },
+      {
+        "id": "failures",
+        "label": "Failure scenarios",
+        "focus": [
+          "unavailable",
+          "idfail",
+          "lookupfail",
+          "decision",
+          "cancelled"
+        ],
+        "note": "Every AVS failure ends as PayoutCancelled with its own verification sub-status."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "fail",
+      "label": "Payout cancelled",
+      "variant": "exception"
+    },
+    {
+      "id": "pipeline",
+      "label": "Verification pipeline"
+    },
+    {
+      "id": "avs",
+      "label": "AVS decisioning"
+    },
+    {
+      "id": "ok",
+      "label": "Payout continues"
+    }
+  ],
+  "phases": [
+    {
+      "id": "intake",
+      "label": "Provider reply",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "gate",
+      "label": "Eligibility gate",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "lookup",
+      "label": "Lookup + outcome",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "response",
+    "decryptacct",
+    "eligibility",
+    "prepare",
+    "avscall",
+    "decision"
+  ],
+  "semanticChecks": {
+    "allowedRoots": [
+      "response"
+    ],
+    "allowedTerminals": [
+      "success",
+      "cancelled"
+    ],
+    "requiredEdges": [
+      {
+        "from": "avscall",
+        "to": "decision"
+      },
+      {
+        "from": "decision",
+        "to": "cancelled"
+      }
+    ],
+    "requiredPaths": [
+      {
+        "from": "response",
+        "to": "success"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "response",
+      "lane": "pipeline",
+      "col": 0,
+      "type": "external",
+      "label": "Verification reply",
+      "sublabel": "from provider",
+      "width": 136
+    },
+    {
+      "id": "decryptacct",
+      "lane": "pipeline",
+      "col": 1,
+      "type": "security",
+      "label": "Decrypt account",
+      "sublabel": "AES merchant key",
+      "width": 134
+    },
+    {
+      "id": "eligibility",
+      "lane": "pipeline",
+      "col": 2,
+      "type": "backend",
+      "label": "AVS eligibility",
+      "sublabel": "flag + global bypass",
+      "width": 136
+    },
+    {
+      "id": "prepare",
+      "lane": "avs",
+      "col": 3,
+      "type": "security",
+      "label": "Prepare AVS input",
+      "sublabel": "row + KMS",
+      "width": 138
+    },
+    {
+      "id": "avscall",
+      "lane": "avs",
+      "col": 4,
+      "type": "cloud",
+      "label": "AVS service",
+      "sublabel": "identity-verification",
+      "width": 136
+    },
+    {
+      "id": "decision",
+      "lane": "avs",
+      "col": 5,
+      "type": "backend",
+      "label": "Outcome matrix",
+      "sublabel": "result + bypass flag",
+      "width": 136
+    },
+    {
+      "id": "notapplies",
+      "lane": "ok",
+      "col": 2,
+      "type": "backend",
+      "label": "AVS not applicable",
+      "sublabel": "settings missing",
+      "width": 140
+    },
+    {
+      "id": "bypassed",
+      "lane": "ok",
+      "col": 3,
+      "type": "backend",
+      "label": "Audit BYPASSED",
+      "sublabel": "continue",
+      "width": 134
+    },
+    {
+      "id": "success",
+      "lane": "ok",
+      "col": 5,
+      "type": "backend",
+      "label": "Verification success",
+      "sublabel": "payout proceeds",
+      "width": 142
+    },
+    {
+      "id": "unavailable",
+      "lane": "fail",
+      "col": 2,
+      "type": "security",
+      "label": "AVS unavailable",
+      "sublabel": "bypass on",
+      "width": 136
+    },
+    {
+      "id": "idfail",
+      "lane": "fail",
+      "col": 3,
+      "type": "security",
+      "label": "ID number failure",
+      "sublabel": "missing or locked",
+      "width": 136
+    },
+    {
+      "id": "lookupfail",
+      "lane": "fail",
+      "col": 4,
+      "type": "security",
+      "label": "AVS lookup error",
+      "sublabel": "connector threw",
+      "width": 138
+    },
+    {
+      "id": "cancelled",
+      "lane": "fail",
+      "col": 5,
+      "type": "backend",
+      "label": "Payout cancelled",
+      "sublabel": "sub-status set",
+      "width": 140
+    }
+  ],
+  "edges": [
+    {
+      "id": "verified",
+      "from": "response",
+      "to": "decryptacct",
+      "label": "verified",
+      "variant": "default"
+    },
+    {
+      "id": "evaluate",
+      "from": "decryptacct",
+      "to": "eligibility",
+      "label": "evaluate",
+      "variant": "emphasis"
+    },
+    {
+      "id": "eligible",
+      "from": "eligibility",
+      "to": "prepare",
+      "label": "eligible",
+      "variant": "emphasis"
+    },
+    {
+      "id": "send",
+      "from": "prepare",
+      "to": "avscall",
+      "label": "account + ID",
+      "variant": "emphasis"
+    },
+    {
+      "id": "result",
+      "from": "avscall",
+      "to": "decision",
+      "label": "MATCH / NO_MATCH",
+      "variant": "default"
+    },
+    {
+      "id": "continue",
+      "from": "decision",
+      "to": "success",
+      "label": "continue",
+      "variant": "emphasis"
+    },
+    {
+      "id": "nomatch",
+      "from": "decision",
+      "to": "cancelled",
+      "label": "fail",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "nosettings",
+      "from": "eligibility",
+      "to": "notapplies",
+      "label": "unresolved",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "skip",
+      "from": "eligibility",
+      "to": "bypassed",
+      "label": "bypassed",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "skipok",
+      "from": "bypassed",
+      "to": "success",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "nosettingsok",
+      "from": "notapplies",
+      "to": "bypassed",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "strict",
+      "from": "eligibility",
+      "to": "unavailable",
+      "label": "strict merchant",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "idbroken",
+      "from": "prepare",
+      "to": "idfail",
+      "label": "no plaintext ID",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "threw",
+      "from": "avscall",
+      "to": "lookupfail",
+      "label": "exception",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "strictcancel",
+      "from": "unavailable",
+      "to": "idfail",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "idcancel",
+      "from": "idfail",
+      "to": "lookupfail",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "lookupcancel",
+      "from": "lookupfail",
+      "to": "cancelled",
+      "variant": "security",
+      "role": "error"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Continue outcomes",
+      "items": [
+        "MATCH continues; a TECHNICAL_FAILURE continues only when the merchant allows bypassing AVS responses",
+        "NotEligible and GloballyBypassed are audited as BYPASSED / Continue, so the dashboard and CSV show an outcome",
+        "Merchant site or payout settings that cannot be resolved mean AVS does not apply — warn and carry on"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Cancel outcomes and sub-status",
+      "items": [
+        "NO_MATCH, or TECHNICAL_FAILURE for a strict merchant: Verification_Failed",
+        "Identity number missing or undecryptable: Verification_Failed or Verification_IdentityNumberDecryptionFailed",
+        "Any unhandled AVS error: Verification_AvsLookupFailed"
+      ]
+    }
+  ]
+}

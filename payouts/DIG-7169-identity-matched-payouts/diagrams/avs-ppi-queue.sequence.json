@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Queueing the Payout Instruction to PPI",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1080,
+      760
+    ],
+    "views": [
+      {
+        "id": "decrypt",
+        "label": "Load and decrypt",
+        "focus": [
+          "payoutsvc",
+          "queuesvc",
+          "db",
+          "kms"
+        ],
+        "note": "The account number is decrypted per payout; the identity number is never touched here."
+      },
+      {
+        "id": "publish",
+        "label": "Publish to PPI",
+        "focus": [
+          "queuesvc",
+          "sqs",
+          "ppi"
+        ],
+        "note": "The credit push command is queued on SQS and consumed by PPI."
+      },
+      {
+        "id": "identity",
+        "label": "Identity number handling",
+        "focus": [
+          "queuesvc",
+          "sqs",
+          "ppi",
+          "kms"
+        ],
+        "note": "The encrypted ID travels untouched and only for pay-to-ID; PPI decrypts it with the same CMK."
+      }
+    ],
+    "column_fit": "spread"
+  },
+  "participants": [
+    {
+      "id": "payoutsvc",
+      "type": "backend",
+      "label": "PayoutService",
+      "sublabel": "after verification"
+    },
+    {
+      "id": "queuesvc",
+      "type": "backend",
+      "label": "QueuePayout",
+      "sublabel": "provider queue"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "Payouts DB",
+      "sublabel": "payout + keys"
+    },
+    {
+      "id": "kms",
+      "type": "security",
+      "label": "AWS KMS",
+      "sublabel": "PPI account key"
+    },
+    {
+      "id": "sqs",
+      "type": "messagebus",
+      "label": "SQS",
+      "sublabel": "credit push queue"
+    },
+    {
+      "id": "ppi",
+      "type": "external",
+      "label": "PPI",
+      "sublabel": "instruction consumer"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 370,
+      "label": "Load + decrypt account"
+    },
+    {
+      "from": 380,
+      "to": 500,
+      "label": "Publish instruction"
+    },
+    {
+      "from": 510,
+      "to": 620,
+      "label": "Result + downstream"
+    }
+  ],
+  "messages": [
+    {
+      "id": "invoke",
+      "from": "payoutsvc",
+      "to": "queuesvc",
+      "y": 180,
+      "label": "QueuePayout(payout)",
+      "variant": "emphasis",
+      "note": "Only when verification succeeded and PPI is enabled"
+    },
+    {
+      "id": "load",
+      "from": "queuesvc",
+      "to": "db",
+      "y": 222,
+      "label": "load verification + payment detail",
+      "variant": "default"
+    },
+    {
+      "id": "loaded",
+      "from": "db",
+      "to": "queuesvc",
+      "y": 264,
+      "label": "encrypted account + wrapped key",
+      "variant": "return"
+    },
+    {
+      "id": "unwrap",
+      "from": "queuesvc",
+      "to": "kms",
+      "y": 306,
+      "label": "unwrap account decryption key",
+      "variant": "security"
+    },
+    {
+      "id": "unwrapped",
+      "from": "kms",
+      "to": "queuesvc",
+      "y": 348,
+      "label": "merchant AES key",
+      "variant": "return"
+    },
+    {
+      "id": "publish",
+      "from": "queuesvc",
+      "to": "sqs",
+      "y": 390,
+      "label": "CreateCreditPushCommand",
+      "variant": "emphasis",
+      "note": "IdentityNumber and IdentityType are sent only for pay-to-ID, as stored ciphertext"
+    },
+    {
+      "id": "ack",
+      "from": "sqs",
+      "to": "queuesvc",
+      "y": 432,
+      "label": "send acknowledged",
+      "variant": "return"
+    },
+    {
+      "id": "consume",
+      "from": "sqs",
+      "to": "ppi",
+      "y": 474,
+      "label": "credit push instruction",
+      "variant": "dashed"
+    },
+    {
+      "id": "result",
+      "from": "queuesvc",
+      "to": "payoutsvc",
+      "y": 516,
+      "label": "QueuePayoutResult",
+      "variant": "return"
+    },
+    {
+      "id": "status",
+      "from": "payoutsvc",
+      "to": "db",
+      "y": 558,
+      "label": "AwaitingSubmission on failure",
+      "variant": "security"
+    },
+    {
+      "id": "ppidecrypt",
+      "from": "ppi",
+      "to": "kms",
+      "y": 600,
+      "label": "decrypt ID with the same CMK",
+      "variant": "dashed",
+      "note": "PPI grants itself Decrypt through its own IAM role"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "queuesvc",
+      "from": 174,
+      "to": 528,
+      "type": "backend"
+    },
+    {
+      "participant": "db",
+      "from": 216,
+      "to": 272,
+      "type": "database"
+    },
+    {
+      "participant": "kms",
+      "from": 300,
+      "to": 356,
+      "type": "security"
+    },
+    {
+      "participant": "sqs",
+      "from": 384,
+      "to": 484,
+      "type": "messagebus"
+    },
+    {
+      "participant": "ppi",
+      "from": 468,
+      "to": 612,
+      "type": "external"
+    },
+    {
+      "participant": "payoutsvc",
+      "from": 510,
+      "to": 570,
+      "type": "backend"
+    },
+    {
+      "participant": "db",
+      "from": 552,
+      "to": 572,
+      "type": "database"
+    },
+    {
+      "participant": "kms",
+      "from": 594,
+      "to": 614,
+      "type": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "What the instruction carries",
+      "items": [
+        "The credit account number is decrypted here, per payout, from the verification-time wrapped key",
+        "IdentityNumber is forwarded only when the payout is pay-to-ID — an ID with no account number",
+        "An AVS payout therefore reaches PPI as an ordinary account credit push, with no identity number"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Guards around the send",
+      "items": [
+        "A distributed lock on pp_{payoutId} makes the queueing single-flight",
+        "Merchant, bank-group features and the debit source account are read from MoneyOut before the command is built",
+        "SQS send is retried per PPI settings; a failed send leaves the payout Awaiting Submission for the next sweep"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Identity number at rest",
+      "items": [
+        "The ID is KMS-encrypted at request time with PPI's account key and is never re-encrypted on the wire",
+        "PPI stores what arrives and decrypts at point of use for TymeBank pay-to-ID and the statement markup file",
+        "The logged command is redacted, so the ciphertext never lands in application logs"
+      ]
+    }
+  ]
+}
