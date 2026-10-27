@@ -1,0 +1,36 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "ReturnOfFunds Status Lifecycle (ReturnStatusId)",
+    "output": "payouts/return-of-funds/diagrams/rof-status.lifecycle.html",
+    "quality_profile": "showcase"
+  },
+  "mainPath": ["created", "awaiting", "processing", "at_bank", "completed"],
+  "states": [
+    { "id": "created", "type": "start", "label": "Created", "sublabel": "Status 0", "tag": "CreateReturnAsync", "step": "01" },
+    { "id": "awaiting", "type": "waiting", "label": "AwaitingSubmissionToPPI", "sublabel": "Status 2 · PendingAwaitingPpi", "tag": "finalised", "step": "02" },
+    { "id": "processing", "type": "active", "label": "SubmittedForProcessing", "sublabel": "Status 3", "tag": "PPI Pending", "step": "03" },
+    { "id": "at_bank", "type": "active", "label": "SubmittedToBank", "sublabel": "Status 4", "tag": "PPI Submitted", "step": "04" },
+    { "id": "completed", "type": "success", "label": "Completed", "sublabel": "Status 1", "tag": "final", "step": "05" },
+    { "id": "investigation", "type": "waiting", "label": "PendingInvestigation", "sublabel": "Status -2", "tag": "final · manual" },
+    { "id": "failed", "type": "failure", "label": "Failed", "sublabel": "Status 6", "tag": "final" },
+    { "id": "cancelled", "type": "neutral", "label": "Cancelled", "sublabel": "Status 5", "tag": "final" }
+  ],
+  "transitions": [
+    { "id": "t-finalise", "from": "created", "to": "awaiting", "label": "finalise" },
+    { "id": "t-pending", "from": "awaiting", "to": "processing", "label": "Pending" },
+    { "id": "t-submitted", "from": "processing", "to": "at_bank", "label": "Submitted" },
+    { "id": "t-success", "from": "at_bank", "to": "completed", "label": "Successful", "variant": "emphasis" },
+    { "id": "t-settled", "from": "created", "to": "investigation", "label": "settled, not removed", "variant": "security" },
+    { "id": "t-card", "from": "awaiting", "to": "investigation", "label": "Card, no override", "variant": "security" },
+    { "id": "t-dup", "from": "at_bank", "to": "investigation", "label": "Duplicated / bad account", "variant": "security" },
+    { "id": "t-failed", "from": "processing", "to": "failed", "label": "Failed / Rejected / Returned", "variant": "security" },
+    { "id": "t-cancel", "from": "processing", "to": "cancelled", "label": "PPI Cancelled", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Who moves the status", "items": ["ReturnService.CreateReturnAsync sets Created or PendingInvestigation", "FinalizeReturnOfFundAsync sets AwaitingSubmissionToPPI", "TryMapReturnStatus maps every later PPI CreditPushStatusId"] },
+    { "dot": "amber", "title": "Stuck states to watch", "items": ["A failed CreateCreditPush leaves AwaitingSubmissionToPPI forever", "The pending job only picks Status = Created", "SubStatus PendingSubmittedPpi is never written"] },
+    { "dot": "rose", "title": "Enum quirks", "items": ["Rejected (7) exists but PPI Rejected maps to Failed", "Completed = 1 numerically, before AwaitingSubmission = 2", "Dashboard enum uses different integers"] }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Return of Funds — End-to-End Architecture",
+    "quality_profile": "showcase",
+    "output": "payouts/return-of-funds/diagrams/rof-end-to-end.architecture.html",
+    "viewBox": [1200, 720],
+    "views": [
+      { "id": "candidate-path", "label": "1. Candidate detection", "focus": ["statements", "unalloc_db", "unalloc_lambda", "check_q"], "note": "Settlement Services finds money on a statement with no successful PayIn match and asks PayIn about it." },
+      { "id": "eligibility-path", "label": "2. Eligibility round-trip", "focus": ["check_q", "payin", "outcome_q", "rof_lambda"], "note": "PayIn decides eligibility and posts the outcome back onto a MoneyOut-owned FIFO queue." },
+      { "id": "create-submit", "label": "3. Create and submit", "focus": ["rof_lambda", "cron", "mo_api", "mo_db", "ppi"], "note": "The processor Lambda creates the return via the API, then a 15-minute job finalises and submits it to PPI." },
+      { "id": "status-path", "label": "4. Status updates", "focus": ["ppi", "status_lambda", "mo_api", "mo_db"], "note": "PPI publishes credit-push status; the existing status Lambda routes ReturnOfFund updates to the Returns API." }
+    ]
+  },
+  "components": [
+    { "id": "statements", "type": "external", "label": "Bank statements", "sublabel": "statements + markoffs", "pos": [30, 110], "size": [140, 64] },
+    { "id": "unalloc_db", "type": "database", "label": "StatementUnallocated", "sublabel": "Transactions", "pos": [230, 110], "size": [140, 64] },
+    { "id": "unalloc_lambda", "type": "backend", "label": "Unallocated λ", "sublabel": "candidate detection", "pos": [430, 110], "size": [140, 64], "tag": "PR #351" },
+    { "id": "check_q", "type": "messagebus", "label": "eligibility-check", "sublabel": "queue-fifo (outbound)", "pos": [630, 110], "size": [140, 64] },
+    { "id": "payin", "type": "external", "label": "PayIn", "sublabel": "eligibility check", "pos": [830, 110], "size": [140, 64] },
+    { "id": "outcome_q", "type": "messagebus", "label": "eligibility-outcome", "sublabel": "queue.fifo (inbound)", "pos": [1030, 110], "size": [140, 64], "tag": "DLQ after 2" },
+    { "id": "rof_lambda", "type": "backend", "label": "RoF processor λ", "sublabel": "SQS + schedule", "pos": [1030, 330], "size": [140, 64] },
+    { "id": "cron", "type": "cloud", "label": "EventBridge rule", "sublabel": "cron(0/15 * * * ? *)", "pos": [1030, 550], "size": [140, 64] },
+    { "id": "mo_api", "type": "backend", "label": "MoneyOut API", "sublabel": "ReturnService", "pos": [630, 330], "size": [140, 64] },
+    { "id": "mo_db", "type": "database", "label": "ReturnsOfFunds", "sublabel": "+ ReturnStatusHistories", "pos": [430, 330], "size": [140, 64] },
+    { "id": "ppi", "type": "external", "label": "PPI", "sublabel": "create-credit-push", "pos": [630, 550], "size": [140, 64] },
+    { "id": "status_lambda", "type": "backend", "label": "Status update λ", "sublabel": "existing λ", "pos": [830, 550], "size": [140, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "moneyout-settlement-services", "wraps": ["unalloc_lambda", "check_q"] },
+    { "kind": "region", "label": "moneyout", "wraps": ["mo_db", "mo_api", "rof_lambda"] }
+  ],
+  "connections": [
+    { "id": "statement-parked", "from": "statements", "to": "unalloc_db", "label": "no match" },
+    { "id": "rescan", "from": "unalloc_db", "to": "unalloc_lambda", "label": "re-scan" },
+    { "id": "enqueue-candidate", "from": "unalloc_lambda", "to": "check_q", "label": "candidate", "variant": "emphasis" },
+    { "id": "payin-consume", "from": "check_q", "to": "payin" },
+    { "id": "payin-outcome", "from": "payin", "to": "outcome_q", "label": "outcome", "variant": "emphasis" },
+    { "id": "outcome-trigger", "from": "outcome_q", "to": "rof_lambda", "label": "SQS batch 10", "labelAt": [1100, 252] },
+    { "id": "create-return", "from": "rof_lambda", "to": "mo_api", "label": "POST CreateReturnOfFunds", "variant": "emphasis" },
+    { "id": "schedule", "from": "cron", "to": "rof_lambda", "label": "BatchSize 50, LookBack 4d", "variant": "dashed" },
+    { "id": "persist", "from": "mo_api", "to": "mo_db", "label": "persist" },
+    { "id": "submit-ppi", "from": "mo_api", "to": "ppi", "label": "CreateCreditPush", "labelAt": [606, 472] },
+    { "id": "ppi-status", "from": "ppi", "to": "status_lambda", "label": "status topic" },
+    { "id": "status-update", "from": "status_lambda", "to": "mo_api", "label": "status update", "variant": "dashed", "fromSide": "top", "toSide": "bottom" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Settlement Services (PR #351)", "items": ["Finds unallocated statement credits", "Stamps ReturnOfFundCandidateId (UUIDv7)", "Sends Reference, StatementDate, Amount, CandidateId"] },
+    { "dot": "emerald", "title": "MoneyOut (PR #3301 + release)", "items": ["Owns the inbound queue, Lambda and Returns API", "Excludes the origin transaction from settlements", "Finalises every 15 min and submits to PPI"] },
+    { "dot": "amber", "title": "Not yet closed", "items": ["Candidate → outcome SLA stamp not implemented", "PayShap entry point has no candidate", "Several branches still unmerged"] }
+  ]
+}
