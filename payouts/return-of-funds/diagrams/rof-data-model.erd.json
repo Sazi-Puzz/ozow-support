@@ -1,0 +1,275 @@
+{
+  "schema_version": 1,
+  "diagram_type": "erd",
+  "meta": {
+    "title": "Return of Funds — Data Model (MoneyOut DB, public schema)",
+    "locale": "en",
+    "output": "payouts/return-of-funds/diagrams/rof-data-model.erd.html",
+    "quality_profile": "showcase"
+  },
+  "layout": {
+    "mode": "grid",
+    "gapY": 38,
+    "gapX": 90
+  },
+  "entities": [
+    {
+      "id": "unallocated",
+      "label": "StatementUnallocatedTransactions",
+      "sublabel": "written by MSS; columns added by PR #3301",
+      "tag": "settlement",
+      "row": 0,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "Id",
+          "type": "bigint",
+          "key": "pk"
+        },
+        {
+          "name": "Reference",
+          "type": "text"
+        },
+        {
+          "name": "Amount",
+          "type": "numeric"
+        },
+        {
+          "name": "Date",
+          "type": "timestamp"
+        },
+        {
+          "name": "Source",
+          "type": "integer (StatementFileType)"
+        },
+        {
+          "name": "IsAllocated",
+          "type": "boolean"
+        },
+        {
+          "name": "LastChecked",
+          "type": "timestamp null"
+        },
+        {
+          "name": "CheckedCount",
+          "type": "bigint"
+        },
+        {
+          "name": "SentForReturnOfFundEligibilityAt",
+          "type": "timestamp null"
+        },
+        {
+          "name": "ReturnOfFundEligibilityResultReceivedAt",
+          "type": "timestamp null"
+        },
+        {
+          "name": "IsEligibleForReturnOfFund",
+          "type": "boolean null"
+        },
+        {
+          "name": "ReturnOfFundCandidateId",
+          "type": "uuid null"
+        }
+      ],
+      "width": 410
+    },
+    {
+      "id": "rof",
+      "label": "ReturnsOfFunds",
+      "sublabel": "one row per origin transaction",
+      "tag": "returns",
+      "row": 0,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "Id",
+          "type": "uuid (v7)",
+          "key": "pk"
+        },
+        {
+          "name": "OriginTransactionId",
+          "type": "uuid",
+          "key": "uk"
+        },
+        {
+          "name": "TransactionId",
+          "type": "uuid null (shadow FK)"
+        },
+        {
+          "name": "Amount",
+          "type": "numeric(18,2)"
+        },
+        {
+          "name": "ActionDate",
+          "type": "timestamp"
+        },
+        {
+          "name": "DebtorReference",
+          "type": "text"
+        },
+        {
+          "name": "CreditorReference",
+          "type": "text"
+        },
+        {
+          "name": "BranchCode",
+          "type": "text"
+        },
+        {
+          "name": "AccountNumber",
+          "type": "text (AES)"
+        },
+        {
+          "name": "SiteId",
+          "type": "uuid"
+        },
+        {
+          "name": "BankGroupId",
+          "type": "uuid null"
+        },
+        {
+          "name": "SourceAccountId",
+          "type": "integer"
+        },
+        {
+          "name": "Status",
+          "type": "integer (ReturnStatusId)"
+        },
+        {
+          "name": "SubStatus",
+          "type": "integer"
+        },
+        {
+          "name": "PayoutProvider",
+          "type": "integer"
+        },
+        {
+          "name": "IsRtc",
+          "type": "boolean null"
+        },
+        {
+          "name": "Reason",
+          "type": "text"
+        },
+        {
+          "name": "Comments",
+          "type": "text"
+        },
+        {
+          "name": "ReturnCompletedDate",
+          "type": "timestamp"
+        },
+        {
+          "name": "CreatedByUserId",
+          "type": "uuid"
+        },
+        {
+          "name": "CreatedDate",
+          "type": "timestamp"
+        },
+        {
+          "name": "ModifiedByUserId",
+          "type": "uuid"
+        },
+        {
+          "name": "ModifiedDate",
+          "type": "timestamp"
+        },
+        {
+          "name": "ModifiedByIpAddress",
+          "type": "text"
+        },
+        {
+          "name": "Deactivated",
+          "type": "boolean"
+        }
+      ],
+      "width": 320
+    },
+    {
+      "id": "history",
+      "label": "ReturnStatusHistories",
+      "sublabel": "append-only audit",
+      "tag": "returns",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "Id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "ReturnId",
+          "type": "uuid",
+          "key": "fk",
+          "references": "rof.Id"
+        },
+        {
+          "name": "Status",
+          "type": "integer"
+        },
+        {
+          "name": "Event",
+          "type": "integer (ReturnPayoutEvent)"
+        },
+        {
+          "name": "EventMessage",
+          "type": "text"
+        },
+        {
+          "name": "CreatedByUserId",
+          "type": "uuid"
+        },
+        {
+          "name": "CreatedDate",
+          "type": "timestamp"
+        },
+        {
+          "name": "CreatedByIpAddress",
+          "type": "text"
+        }
+      ],
+      "width": 320
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rof-history",
+      "from": "rof",
+      "to": "history",
+      "fromCardinality": "one",
+      "toCardinality": "many",
+      "label": "ON DELETE RESTRICT"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "No candidate ↔ return link",
+      "items": [
+        "ReturnsOfFunds has no ReturnOfFundCandidateId column",
+        "CreateReturnRequest carries no CandidateId either",
+        "The SLA tie-back has nothing to join on yet"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Two transaction columns",
+      "items": [
+        "OriginTransactionId is set on create (unique index)",
+        "TransactionId backs the Transaction navigation and is never set",
+        "So Include(Transaction) is null in the pending job"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Migrations",
+      "items": [
+        "EF migrations + standalone SQL scripts live in MoneyOut.Data",
+        "Run one or the other, never both",
+        "MSS reads the same table; MoneyOut owns its schema"
+      ]
+    }
+  ]
+}
