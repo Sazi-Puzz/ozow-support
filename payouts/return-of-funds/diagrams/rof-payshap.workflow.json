@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Return of Funds — Statement Candidate vs PayShap Entry",
+    "quality_profile": "showcase",
+    "output": "payouts/return-of-funds/diagrams/rof-payshap.workflow.html"
+  },
+  "lanes": [
+    { "id": "statement", "label": "Statement candidate path (built)" },
+    { "id": "payshap", "label": "PayShap path (proposed)" },
+    { "id": "moneyout", "label": "MoneyOut Returns" },
+    { "id": "risk", "label": "Open risk / undecided", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "origin", "label": "Origin", "fromCol": 0, "toCol": 1 },
+    { "id": "decide", "label": "Decide", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "create", "label": "Create", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["stmt", "candidate", "eligibility", "outcome_q", "gate", "created"],
+  "nodes": [
+    { "id": "stmt", "lane": "statement", "col": 0, "type": "external", "label": "Bank statement", "sublabel": "credit, no PayIn match" },
+    { "id": "candidate", "lane": "statement", "col": 1, "type": "backend", "label": "Unallocated λ", "sublabel": "CandidateId stamped" },
+    { "id": "eligibility", "lane": "statement", "col": 2, "type": "external", "label": "PayIn", "sublabel": "eligibility check" },
+    { "id": "ps_pay", "lane": "payshap", "col": 0, "type": "external", "label": "PayShap PayIn", "sublabel": "ShapID + ID number" },
+    { "id": "ps_id", "lane": "payshap", "col": 1, "type": "security", "label": "Identity check", "sublabel": "Special Projects", "tag": "cached AVS first" },
+    { "id": "ps_req", "lane": "payshap", "col": 2, "type": "external", "label": "RoF instruction", "sublabel": "no CandidateId" },
+    { "id": "outcome_q", "lane": "moneyout", "col": 3, "type": "messagebus", "label": "outcome queue", "sublabel": "FIFO, DLQ after 2" },
+    { "id": "gate", "lane": "moneyout", "col": 4, "type": "security", "label": "In statement?", "sublabel": "cleared or unallocated" },
+    { "id": "created", "lane": "moneyout", "col": 5, "type": "backend", "label": "Return created", "sublabel": "excluded from settlement" },
+    { "id": "dropped", "lane": "risk", "col": 4, "type": "security", "label": "Return null", "sublabel": "nothing persisted" },
+    { "id": "trigger", "lane": "risk", "col": 5, "type": "external", "label": "Funding trigger?", "sublabel": "FinOps lump-sum" }
+  ],
+  "edges": [
+    { "id": "e-stmt", "from": "stmt", "to": "candidate" },
+    { "id": "e-cand", "from": "candidate", "to": "eligibility", "label": "candidate", "variant": "emphasis" },
+    { "id": "e-elig", "from": "eligibility", "to": "outcome_q", "label": "eligible", "variant": "emphasis" },
+    { "id": "e-gate", "from": "outcome_q", "to": "gate" },
+    { "id": "e-created", "from": "gate", "to": "created", "label": "yes", "variant": "emphasis" },
+    { "id": "e-ps1", "from": "ps_pay", "to": "ps_id" },
+    { "id": "e-ps2", "from": "ps_id", "to": "ps_req", "label": "mismatch", "variant": "security" },
+    { "id": "e-ps3", "from": "ps_req", "to": "outcome_q", "label": "instruction", "variant": "dashed", "role": "branch" },
+    { "id": "e-null", "from": "gate", "to": "dropped", "label": "not yet", "variant": "security", "role": "error" },
+    { "id": "e-trigger", "from": "dropped", "to": "trigger", "label": "needs decision", "variant": "dashed", "role": "branch" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Statement path", "items": ["Money is already proven on a statement", "CandidateId ties the outcome to the unallocated row", "SLA measurable end to end"] },
+    { "dot": "amber", "title": "PayShap path", "items": ["Fraud-driven: identity mismatch after pay-in", "Clears via InstaPay, often days later", "No candidate, so no SLA tie-back"] },
+    { "dot": "rose", "title": "To decide (El-Dean / FinOps)", "items": ["Return before funds are cleared? Needs explicit sign-off", "Which event submits a held PayShap return", "Second scheduled job keyed on CandidateId absence"] }
+  ]
+}

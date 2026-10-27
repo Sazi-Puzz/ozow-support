@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Return of Funds — Submit to PPI and Status Feedback",
+    "quality_profile": "showcase",
+    "output": "payouts/return-of-funds/diagrams/rof-submit-and-status.sequence.html",
+    "column_fit": "spread",
+    "views": [
+      {
+        "id": "submit",
+        "label": "Finalise and submit",
+        "focus": [
+          "rof",
+          "api",
+          "db",
+          "ppi"
+        ],
+        "note": "A 15-minute schedule finalises Created returns and pushes a credit instruction to PPI."
+      },
+      {
+        "id": "status",
+        "label": "Status feedback",
+        "focus": [
+          "ppi",
+          "status",
+          "api",
+          "db"
+        ],
+        "note": "PPI status updates come back through the shared status Lambda."
+      }
+    ],
+    "viewBox": [
+      1080,
+      560
+    ]
+  },
+  "participants": [
+    {
+      "id": "rof",
+      "type": "backend",
+      "label": "RoF processor λ",
+      "sublabel": "moneyout"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "ReturnService",
+      "sublabel": "MoneyOut API"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MoneyOut DB",
+      "sublabel": "PostgreSQL"
+    },
+    {
+      "id": "ppi",
+      "type": "external",
+      "label": "PPI",
+      "sublabel": "credit push"
+    },
+    {
+      "id": "status",
+      "type": "backend",
+      "label": "Status λ",
+      "sublabel": "status update"
+    }
+  ],
+  "segments": [
+    {
+      "from": 156,
+      "to": 294,
+      "label": "Finalise + submit (cron 0/15)"
+    },
+    {
+      "from": 314,
+      "to": 418,
+      "label": "Status"
+    }
+  ],
+  "messages": [
+    {
+      "from": "rof",
+      "to": "api",
+      "y": 176,
+      "label": "POST ProcessPending",
+      "variant": "dashed"
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "y": 210,
+      "label": "Status = Created",
+      "variant": "default"
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "y": 244,
+      "label": "AwaitingSubmissionToPPI",
+      "variant": "default"
+    },
+    {
+      "from": "api",
+      "to": "ppi",
+      "y": 278,
+      "label": "CreateCreditPush",
+      "variant": "emphasis"
+    },
+    {
+      "from": "ppi",
+      "to": "status",
+      "y": 334,
+      "label": "status topic",
+      "variant": "dashed"
+    },
+    {
+      "from": "status",
+      "to": "api",
+      "y": 368,
+      "label": "POST status update",
+      "variant": "dashed"
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "y": 402,
+      "label": "Status + history",
+      "variant": "default"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "api",
+      "from": 170,
+      "to": 286
+    },
+    {
+      "participant": "api",
+      "from": 362,
+      "to": 410
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Submission",
+      "items": [
+        "Only Status = Created is picked up",
+        "OriginInternalReference = ReturnOfFund Id",
+        "OriginInternalType = ReturnOfFund"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Known gaps",
+      "items": [
+        "Status λ URL ≠ controller route on DIG-7556",
+        "Failed queue leaves AwaitingSubmissionToPPI",
+        "PayIn → MSS SLA stamp not written yet"
+      ]
+    }
+  ]
+}

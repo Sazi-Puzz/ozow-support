@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Return of Funds — Candidate to Created Return",
+    "quality_profile": "showcase",
+    "output": "payouts/return-of-funds/diagrams/rof-candidate-to-create.sequence.html",
+    "column_fit": "spread",
+    "views": [
+      {
+        "id": "candidate",
+        "label": "Candidate round-trip",
+        "focus": [
+          "mss",
+          "payin",
+          "rof"
+        ],
+        "note": "Settlement Services nominates a candidate; PayIn answers on the inbound FIFO queue."
+      },
+      {
+        "id": "create",
+        "label": "Create gates",
+        "focus": [
+          "api",
+          "db",
+          "mssapi"
+        ],
+        "note": "Statement evidence, idempotency, settlement removal, then persist."
+      }
+    ],
+    "viewBox": [
+      1080,
+      620
+    ]
+  },
+  "participants": [
+    {
+      "id": "mss",
+      "type": "backend",
+      "label": "Unallocated λ",
+      "sublabel": "MSS"
+    },
+    {
+      "id": "payin",
+      "type": "external",
+      "label": "PayIn",
+      "sublabel": "eligibility"
+    },
+    {
+      "id": "rof",
+      "type": "backend",
+      "label": "RoF processor λ",
+      "sublabel": "moneyout"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "ReturnService",
+      "sublabel": "MoneyOut API"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MoneyOut DB",
+      "sublabel": "PostgreSQL"
+    },
+    {
+      "id": "mssapi",
+      "type": "backend",
+      "label": "MSS API",
+      "sublabel": "settlements"
+    }
+  ],
+  "segments": [
+    {
+      "from": 156,
+      "to": 260,
+      "label": "Candidate"
+    },
+    {
+      "from": 280,
+      "to": 520,
+      "label": "Create (ReturnService.CreateReturnAsync)"
+    }
+  ],
+  "messages": [
+    {
+      "from": "mss",
+      "to": "payin",
+      "y": 176,
+      "label": "candidate + CandidateId",
+      "variant": "emphasis"
+    },
+    {
+      "from": "payin",
+      "to": "rof",
+      "y": 210,
+      "label": "CreateReturnRequest",
+      "variant": "emphasis"
+    },
+    {
+      "from": "rof",
+      "to": "api",
+      "y": 244,
+      "label": "POST CreateReturnOfFunds",
+      "variant": "emphasis"
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "y": 300,
+      "label": "in statement?",
+      "variant": "default"
+    },
+    {
+      "from": "db",
+      "to": "api",
+      "y": 334,
+      "label": "cleared / unallocated",
+      "variant": "return"
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "y": 368,
+      "label": "existing return?",
+      "variant": "default"
+    },
+    {
+      "from": "api",
+      "to": "mssapi",
+      "y": 402,
+      "label": "remove from settlement",
+      "variant": "dashed"
+    },
+    {
+      "from": "mssapi",
+      "to": "api",
+      "y": 436,
+      "label": "removed / refused",
+      "variant": "return"
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "y": 470,
+      "label": "ExcludeFromSettlements",
+      "variant": "default"
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "y": 504,
+      "label": "INSERT RoF + history",
+      "variant": "emphasis"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "rof",
+      "from": 204,
+      "to": 252
+    },
+    {
+      "participant": "api",
+      "from": 238,
+      "to": 512
+    },
+    {
+      "participant": "mssapi",
+      "from": 396,
+      "to": 444
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Create gates",
+      "items": [
+        "No statement evidence → return null, nothing created",
+        "Existing RoF for the transaction → idempotent replay",
+        "Settled → removal attempt, else PendingInvestigation"
+      ]
+    }
+  ]
+}
