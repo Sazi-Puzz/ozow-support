@@ -1,0 +1,88 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Unallocated Transactions — Three Stages (MSS, PR #351)",
+    "quality_profile": "showcase",
+    "output": "payouts/return-of-funds/diagrams/rof-unallocated-stages.workflow.html",
+    "repository": {
+      "url": "https://bitbucket.org/ipaysecureeft/moneyout-settlement-services.git",
+      "link_mode": "local-only",
+      "revision": "fd402ac8a4dc30244af6cb6fa68a2cc8203c3626"
+    },
+    "views": [
+      { "id": "stage1", "label": "Stage 1 — park", "focus": ["stmt", "unalloc", "cleared"], "note": "Ingestion clears what matches and parks the rest as unallocated." },
+      { "id": "stage2", "label": "Stage 2 — retry", "focus": ["unalloc", "matcher", "cleared", "email"], "note": "The scheduled matcher re-checks every 60 min for up to 7 days and 10 tries, then emails support." },
+      { "id": "stage3", "label": "Stage 3 — RoF (new)", "focus": ["unalloc", "nominate", "queue"], "note": "PR #351 nominates unallocated rows as Return of Funds candidates." }
+    ]
+  },
+  "lanes": [
+    { "id": "settled", "label": "Matched → settlement" },
+    { "id": "ingest", "label": "Stage 1 — statement ingestion" },
+    { "id": "retry", "label": "Stage 2 — retry matcher" },
+    { "id": "rof", "label": "Stage 3 — RoF nomination (new)", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "arrive", "label": "Arrive", "fromCol": 0, "toCol": 1 },
+    { "id": "rematch", "label": "Re-match", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "outcome", "label": "Outcome", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["stmt", "unalloc", "matcher", "cleared", "settle"],
+  "nodes": [
+    {
+      "id": "stmt", "lane": "ingest", "col": 0, "type": "external", "label": "Statement / markoff", "sublabel": "Absa · Nedbank · Capitec · Card",
+      "sources": [{ "path": "src/moneyout.settlement.services.application/Services/TransactionBatchHandler/TransactionBatchHandler.cs", "line": 13, "end_line": 26, "label": "cleared batch" },
+                  { "path": "src/moneyout.settlement.services.application/Services/TransactionBatchHandler/TransactionBatchHandler.cs", "line": 57, "end_line": 71, "label": "unallocated batch" }]
+    },
+    {
+      "id": "unalloc", "lane": "ingest", "col": 1, "type": "database", "label": "StatementUnallocated", "sublabel": "IsAllocated = false",
+      "tag": "Ref:{ref}_TransactionRef:{tx}",
+      "sources": [{ "path": "src/moneyout.settlement.services.application/Services/TransactionBatchHandler/TransactionBatchHandler.cs", "line": 73, "end_line": 84 }]
+    },
+    {
+      "id": "matcher", "lane": "retry", "col": 2, "type": "backend", "label": "Match now?", "sublabel": "FinalBankReference lookup",
+      "tag": "60 min · 7 days · 10 tries",
+      "sources": [{ "path": "src/moneyout.settlement.services.application/Services/UnallocatedTransactionsHandler/ProcessUnallocatedTransactionsHandler.cs", "line": 34, "end_line": 65, "label": "while (true) batch loop" },
+                  { "path": "src/moneyout.settlement.services.application/Services/UnallocatedTransactionsHandler/ProcessUnallocatedTransactionsHandler.cs", "line": 147, "end_line": 206, "label": "ProcessTransactionBatch" },
+                  { "path": "src/moneyout.settlement.services.infrastructure/Repositories/SettlementRepository.cs", "line": 16, "end_line": 35, "label": "retry query" }]
+    },
+    {
+      "id": "cleared", "lane": "settled", "col": 3, "type": "database", "label": "StatementCleared", "sublabel": "Transactions",
+      "sources": [{ "path": "src/moneyout.settlement.services.application/Services/TransactionBatchHandler/TransactionBatchHandler.cs", "line": 28, "end_line": 54 },
+                  { "path": "src/moneyout.settlement.services.application/Services/UnallocatedTransactionsHandler/ProcessUnallocatedTransactionsHandler.cs", "line": 206, "end_line": 212, "label": "matcher insert" }]
+    },
+    { "id": "settle", "lane": "settled", "col": 5, "type": "backend", "label": "Merchant settlement", "sublabel": "Settlement V3" },
+    {
+      "id": "email", "lane": "retry", "col": 4, "type": "external", "label": "Support email", "sublabel": "final try only",
+      "sources": [{ "path": "src/moneyout.settlement.services.application/Services/UnallocatedTransactionsHandler/ProcessUnallocatedTransactionsHandler.cs", "line": 67, "end_line": 75 }]
+    },
+    {
+      "id": "nominate", "lane": "rof", "col": 2, "type": "backend", "label": "Nominate candidate", "sublabel": "CandidateId = UUIDv7",
+      "tag": "IsReturnOfFundsEnabled",
+      "sources": [{ "path": "src/moneyout.settlement.services.application/Services/UnallocatedTransactionsHandler/ProcessUnallocatedTransactionsHandler.cs", "line": 37, "end_line": 41, "label": "runs each loop" },
+                  { "path": "src/moneyout.settlement.services.application/Services/UnallocatedTransactionsHandler/ProcessUnallocatedTransactionsHandler.cs", "line": 85, "end_line": 100, "label": "ProcessReturnOfFundCandidateAsync" },
+                  { "path": "src/moneyout.settlement.services.infrastructure/Repositories/ReturnOfFundRepository.cs", "line": 11, "end_line": 28, "label": "candidate query" }]
+    },
+    {
+      "id": "queue", "lane": "rof", "col": 4, "type": "messagebus", "label": "eligibility-check", "sublabel": "queue-fifo → PayIn",
+      "sources": [{ "path": "terraform/roots/moneyout_settlement_service_unallocated_transaction_processor_lambda_infrastructure/queues.tf", "line": 1, "end_line": 10 },
+                  { "path": "src/moneyout.settlement.services.application/Services/UnallocatedTransactionsHandler/ProcessUnallocatedTransactionsHandler.cs", "line": 296, "end_line": 300, "label": "QueueReturnOfFundCandidateAsync" }]
+    }
+  ],
+  "edges": [
+    { "id": "e-match", "from": "stmt", "to": "cleared", "label": "matches", "role": "branch" },
+    { "id": "e-park", "from": "stmt", "to": "unalloc", "label": "no match", "variant": "emphasis" },
+    { "id": "e-rescan", "from": "unalloc", "to": "matcher", "label": "every run", "variant": "emphasis" },
+    { "id": "e-yes", "from": "matcher", "to": "cleared", "label": "yes", "variant": "emphasis" },
+    { "id": "e-no", "from": "matcher", "to": "unalloc", "label": "no: CheckedCount++", "role": "return", "variant": "dashed" },
+    { "id": "e-final", "from": "matcher", "to": "email", "label": "final try", "variant": "security", "role": "error" },
+    { "id": "e-settle", "from": "cleared", "to": "settle", "variant": "emphasis" },
+    { "id": "e-nominate", "from": "unalloc", "to": "nominate", "label": "NEW", "variant": "dashed", "role": "branch" },
+    { "id": "e-send", "from": "nominate", "to": "queue", "label": "candidate", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Stages 1–2 (existing)", "items": ["Only statement-proven money reaches settlement", "Late PayIn completions match on retry", "What never matches is the RoF population"] },
+    { "dot": "amber", "title": "Stage 3 (PR #351)", "items": ["Runs inside the retry loop, before each batch", "Sends Reference, StatementDate, Amount, CandidateId", "Stamps SentForReturnOfFundEligibilityAt"] },
+    { "dot": "rose", "title": "Watch out", "items": ["Fresh rows are nominated, not retried, for 2 days", "No 'already sent' filter, so rows re-send each run", "Missing RETURN_OF_FUNDS_SETTINGS breaks stage 2 too"] }
+  ]
+}
