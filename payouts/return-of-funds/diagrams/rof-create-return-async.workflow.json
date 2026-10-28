@@ -1,0 +1,105 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "ReturnService.CreateReturnAsync — Creating a Return (DIG-7556)",
+    "quality_profile": "showcase",
+    "output": "payouts/return-of-funds/diagrams/rof-create-return-async.workflow.html",
+    "repository": {
+      "url": "https://bitbucket.org/ipaysecureeft/moneyout.git",
+      "link_mode": "local-only",
+      "revision": "0c7916cfb36d66b57a1a286b14f2be89c12ce537"
+    },
+    "views": [
+      { "id": "happy", "label": "New return, not settled", "focus": ["entry", "txnull", "stmt", "existing", "settled", "created"], "note": "Four gates, then the transaction is excluded from settlement and the return is saved as Created." },
+      { "id": "early-exits", "label": "Early exits", "focus": ["txnull", "stmt", "existing", "throw", "nullret", "idem"], "note": "Missing transaction throws; no statement evidence returns null; an existing return is replayed idempotently." },
+      { "id": "settled", "label": "Already in a settlement", "focus": ["settled", "prep_s", "removal", "created", "pending"], "note": "MSS can only remove it from a Pending or PendingSubmission settlement; otherwise the return needs investigation." }
+    ]
+  },
+  "lanes": [
+    { "id": "exits", "label": "Early exits", "variant": "exception" },
+    { "id": "main", "label": "CreateReturnAsync gates" },
+    { "id": "settle", "label": "Already settled → MSS" },
+    { "id": "manual", "label": "Manual follow-up", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "receive", "label": "Receive", "fromCol": 0, "toCol": 1 },
+    { "id": "gates", "label": "Evidence + idempotency", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "settlement", "label": "Settlement + persist", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["entry", "txnull", "stmt", "existing", "settled", "created"],
+  "nodes": [
+    {
+      "id": "entry", "lane": "main", "col": 0, "type": "frontend", "label": "POST", "sublabel": "CreateReturnOfFunds",
+      "sources": [{ "path": "src/MoneyOut.Api/Controllers/Returns/ReturnsController.cs", "line": 14, "end_line": 19 }]
+    },
+    {
+      "id": "txnull", "lane": "main", "col": 1, "type": "security", "label": "Transaction?", "sublabel": "request.Transaction",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 54, "end_line": 65 }]
+    },
+    {
+      "id": "stmt", "lane": "main", "col": 2, "type": "security", "label": "In statement?", "sublabel": "cleared or unallocated", "tag": "substring match",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 67, "end_line": 74 },
+                  { "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 877, "end_line": 886 },
+                  { "path": "src/MoneyOut.Data/Repository/ReturnRepository.cs", "line": 152, "end_line": 174, "label": "TransactionExistsInStatementAsync" }]
+    },
+    {
+      "id": "existing", "lane": "main", "col": 3, "type": "database", "label": "Return exists?", "sublabel": "unique OriginTransactionId",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 76, "end_line": 82 }]
+    },
+    {
+      "id": "settled", "lane": "main", "col": 4, "type": "database", "label": "In a settlement?", "sublabel": "SettlementTransactions",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 84, "end_line": 98 }]
+    },
+    {
+      "id": "created", "lane": "main", "col": 5, "type": "backend", "label": "Save return", "sublabel": "Status = Created", "tag": "RoF + history",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 100, "end_line": 107, "label": "not-settled path" },
+                  { "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 829, "end_line": 866, "label": "CreateReturnOfFunds" },
+                  { "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 868, "end_line": 926, "label": "get/create txn + exclude" }]
+    },
+    {
+      "id": "throw", "lane": "exits", "col": 1, "type": "security", "label": "Throw", "sublabel": "InvalidOperation",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 59, "end_line": 65 }]
+    },
+    {
+      "id": "nullret", "lane": "exits", "col": 2, "type": "security", "label": "Return null", "sublabel": "nothing saved",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 67, "end_line": 74 }]
+    },
+    {
+      "id": "idem", "lane": "exits", "col": 3, "type": "backend", "label": "Replay", "sublabel": "return existing DTO",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 727, "end_line": 738, "label": "HandleExistingReturn" }]
+    },
+    {
+      "id": "prep_s", "lane": "settle", "col": 4, "type": "backend", "label": "Get/create txn", "sublabel": "+ ExcludeFromSettlements", "tag": "needs Complete",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 740, "end_line": 756 },
+                  { "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 903, "end_line": 926, "label": "CreateMoneyOutTransaction" }]
+    },
+    {
+      "id": "removal", "lane": "settle", "col": 5, "type": "external", "label": "MSS removal", "sublabel": "Pending / PendingSubmission",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 757, "end_line": 810 }]
+    },
+    {
+      "id": "pending", "lane": "manual", "col": 5, "type": "security", "label": "Save return", "sublabel": "PendingInvestigation",
+      "sources": [{ "path": "src/MoneyOut.Application.Returns/Services/ReturnService.cs", "line": 811, "end_line": 827 }]
+    }
+  ],
+  "edges": [
+    { "id": "e-in", "from": "entry", "to": "txnull", "variant": "emphasis" },
+    { "id": "e-tx", "from": "txnull", "to": "stmt", "label": "yes", "variant": "emphasis" },
+    { "id": "e-st", "from": "stmt", "to": "existing", "label": "yes", "variant": "emphasis" },
+    { "id": "e-ex", "from": "existing", "to": "settled", "label": "no", "variant": "emphasis" },
+    { "id": "e-new", "from": "settled", "to": "created", "label": "no", "variant": "emphasis" },
+    { "id": "e-throw", "from": "txnull", "to": "throw", "label": "null", "variant": "security", "role": "error", "fromSide": "top", "toSide": "bottom" },
+    { "id": "e-null", "from": "stmt", "to": "nullret", "label": "no", "variant": "security", "role": "error" },
+    { "id": "e-idem", "from": "existing", "to": "idem", "label": "yes", "role": "branch" },
+    { "id": "e-settled", "from": "settled", "to": "prep_s", "label": "yes", "role": "branch" },
+    { "id": "e-remove", "from": "prep_s", "to": "removal", "label": "POST" },
+    { "id": "e-removed", "from": "removal", "to": "created", "label": "removed", "variant": "emphasis" },
+    { "id": "e-refused", "from": "removal", "to": "pending", "label": "refused", "variant": "security", "role": "error" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Every path excludes the txn", "items": ["ExcludeFromSettlements = true before saving", "Account number AES-encrypted with the merchant key", "History row written with the return"] },
+    { "dot": "rose", "title": "Known breakages", "items": ["ProcessTransaction rejects non-Complete transactions", "Null return looks like success (204) to the Lambda", "TransactionId on the return is never set"] },
+    { "dot": "amber", "title": "Not checked here", "items": ["IsEligibleForReturnOfFund is ignored", "No ReturnOfFundCandidateId stamp yet", "PendingInvestigation needs FinOps"] }
+  ]
+}
