@@ -5245,8 +5245,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <rect x="461.7" y="204" width="10" height="48" rx="3" class="c-backend" stroke-width="1"/>
         <rect x="630.3" y="238" width="10" height="274" rx="3" class="c-mask"/>
         <rect x="630.3" y="238" width="10" height="274" rx="3" class="c-backend" stroke-width="1"/>
-        <rect x="967.5" y="396" width="10" height="48" rx="3" class="c-mask"/>
-        <rect x="967.5" y="396" width="10" height="48" rx="3" class="c-backend" stroke-width="1"/>
+        <rect x="967.5" y="362" width="10" height="48" rx="3" class="c-mask"/>
+        <rect x="967.5" y="362" width="10" height="48" rx="3" class="c-external" stroke-width="1"/>
 
         <!-- Messages -->
         <g data-edge-from="mss" data-edge-to="payin" data-edge-label="candidate + CandidateId" data-edge-key="0">
@@ -5273,43 +5273,43 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </g>
         </g>
 
-        <g data-edge-from="api" data-edge-to="db" data-edge-label="in statement?" data-edge-key="3">
+        <g data-edge-from="api" data-edge-to="db" data-edge-label="stamp eligibility result" data-edge-key="3">
           <path data-composition-edge-from="api" data-composition-edge-to="db" data-composition-points="642.3,300;796.9,300" d="M 642.3 300 L 796.9 300" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <g data-detail="context">
-          <rect x="670.6999999999999" y="280" width="97.8" height="18" rx="3" class="c-mask"/>
-          <text x="719.5999999999999" y="290" class="t-muted" font-size="11" text-anchor="middle">in statement?</text>
+          <rect x="634.3999999999999" y="280" width="170.39999999999998" height="18" rx="3" class="c-mask"/>
+          <text x="719.5999999999999" y="290" class="t-muted" font-size="11" text-anchor="middle">stamp eligibility result</text>
         </g>
         </g>
 
-        <g data-edge-from="db" data-edge-to="api" data-edge-label="cleared / unallocated" data-edge-key="4">
-          <path data-composition-edge-from="db" data-composition-edge-to="api" data-composition-points="796.9,334;642.3,334" d="M 796.9 334 L 642.3 334" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.4" stroke-dasharray="3,5" marker-end="url(#arrowhead)"/>
+        <g data-edge-from="api" data-edge-to="db" data-edge-label="existing return?" data-edge-key="4">
+          <path data-composition-edge-from="api" data-composition-edge-to="db" data-composition-points="642.3,334;796.9,334" d="M 642.3 334 L 796.9 334" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <g data-detail="context">
-          <rect x="644.3" y="314" width="150.6" height="18" rx="3" class="c-mask"/>
-          <text x="719.5999999999999" y="324" class="t-muted" font-size="11" text-anchor="middle">cleared / unallocated</text>
+          <rect x="660.8" y="314" width="117.6" height="18" rx="3" class="c-mask"/>
+          <text x="719.5999999999999" y="324" class="t-muted" font-size="11" text-anchor="middle">existing return?</text>
         </g>
         </g>
 
-        <g data-edge-from="api" data-edge-to="db" data-edge-label="existing return?" data-edge-key="5">
-          <path data-composition-edge-from="api" data-composition-edge-to="db" data-composition-points="642.3,368;796.9,368" d="M 642.3 368 L 796.9 368" class="a-default" data-animate="edge" style="--step:5" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <g data-edge-from="api" data-edge-to="oe" data-edge-label="get txn (any status)" data-edge-key="5">
+          <path data-composition-edge-from="api" data-composition-edge-to="oe" data-composition-points="642.3,368;965.5,368" d="M 642.3 368 L 965.5 368" class="a-dashed" data-animate="edge" style="--step:5" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <g data-detail="context">
-          <rect x="660.8" y="348" width="117.6" height="18" rx="3" class="c-mask"/>
-          <text x="719.5999999999999" y="358" class="t-muted" font-size="11" text-anchor="middle">existing return?</text>
+          <rect x="731.9" y="348" width="144" height="18" rx="3" class="c-mask"/>
+          <text x="803.9" y="358" class="t-edge-dashed" font-size="11" text-anchor="middle">get txn (any status)</text>
         </g>
         </g>
 
-        <g data-edge-from="api" data-edge-to="mssapi" data-edge-label="remove from settlement" data-edge-key="6">
-          <path data-composition-edge-from="api" data-composition-edge-to="mssapi" data-composition-points="642.3,402;965.5,402" d="M 642.3 402 L 965.5 402" class="a-dashed" data-animate="edge" style="--step:6" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <g data-edge-from="oe" data-edge-to="api" data-edge-label="ExternalTransactionDto" data-edge-key="6">
+          <path data-composition-edge-from="oe" data-composition-edge-to="api" data-composition-points="965.5,402;642.3,402" d="M 965.5 402 L 642.3 402" class="a-default" data-animate="edge" style="--step:6" stroke-width="1.4" stroke-dasharray="3,5" marker-end="url(#arrowhead)"/>
         <g data-detail="context">
           <rect x="725.3" y="382" width="157.2" height="18" rx="3" class="c-mask"/>
-          <text x="803.9" y="392" class="t-edge-dashed" font-size="11" text-anchor="middle">remove from settlement</text>
+          <text x="803.9" y="392" class="t-muted" font-size="11" text-anchor="middle">ExternalTransactionDto</text>
         </g>
         </g>
 
-        <g data-edge-from="mssapi" data-edge-to="api" data-edge-label="removed / refused" data-edge-key="7">
-          <path data-composition-edge-from="mssapi" data-composition-edge-to="api" data-composition-points="965.5,436;642.3,436" d="M 965.5 436 L 642.3 436" class="a-default" data-animate="edge" style="--step:7" stroke-width="1.4" stroke-dasharray="3,5" marker-end="url(#arrowhead)"/>
+        <g data-edge-from="api" data-edge-to="db" data-edge-label="delete in-flight settlement rows" data-edge-key="7">
+          <path data-composition-edge-from="api" data-composition-edge-to="db" data-composition-points="642.3,436;796.9,436" d="M 642.3 436 L 796.9 436" class="a-default" data-animate="edge" style="--step:7" stroke-width="1.4" marker-end="url(#arrowhead)"/>
         <g data-detail="context">
-          <rect x="741.8" y="416" width="124.19999999999999" height="18" rx="3" class="c-mask"/>
-          <text x="803.9" y="426" class="t-muted" font-size="11" text-anchor="middle">removed / refused</text>
+          <rect x="607.9999999999999" y="416" width="223.2" height="18" rx="3" class="c-mask"/>
+          <text x="719.5999999999999" y="426" class="t-muted" font-size="11" text-anchor="middle">delete in-flight settlement rows</text>
         </g>
         </g>
 
@@ -5397,15 +5397,16 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="803.9" y="122" class="t-muted" font-size="7" text-anchor="middle">PostgreSQL</text>
         </g>
 
-        <g id="node-mssapi" data-node-id="mssapi" data-node-label="MSS API" tabindex="0" role="button" aria-label="Focus MSS API, settlements, Sequence participant" aria-pressed="false" data-node-kind="backend" data-node-sublabel="settlements" data-node-context="Sequence participant">
-          <title>MSS API · settlements · Sequence participant</title>
+        <g id="node-oe" data-node-id="oe" data-node-label="OE / Dashboard" tabindex="0" role="button" aria-label="Focus OE / Dashboard, transaction source, Sequence participant" aria-pressed="false" data-node-kind="external" data-node-sublabel="transaction source" data-node-context="Sequence participant">
+          <title>OE / Dashboard · transaction source · Sequence participant</title>
           <rect x="905" y="72" width="135" height="60" rx="6" class="c-mask"/>
-          <rect x="905" y="72" width="135" height="60" rx="6" class="c-backend" data-animate="node" style="--step:5" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(911 78) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          <rect x="905" y="72" width="135" height="60" rx="6" class="c-external" data-animate="node" style="--step:5" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(911 78) scale(0.6875)">
+            <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
+            <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="972.5" y="108" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">MSS API</text>
-          <text data-detail="context" x="972.5" y="122" class="t-muted" font-size="7" text-anchor="middle">settlements</text>
+          <text data-node-label="" data-detail-anchor="" x="972.5" y="108" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">OE / Dashboard</text>
+          <text data-detail="context" x="972.5" y="122" class="t-muted" font-size="7" text-anchor="middle">transaction source</text>
         </g>
 
         <!-- Legend -->
@@ -5608,12 +5609,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Create gates</h3>
+          <h3>Create gates (09e24178)</h3>
         </div>
         <ul>
-          <li>No statement evidence → return null, nothing created</li>
-          <li>Existing RoF for the transaction → idempotent replay</li>
-          <li>Settled → removal attempt, else PendingInvestigation</li>
+          <li>Candidate row stamped with result + received time</li>
+          <li>OE lookup only when MoneyOut lacks the transaction</li>
+          <li>Settled (Submitted/Complete) still gets Created</li>
         </ul>
       </div>
     </div>

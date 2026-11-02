@@ -93,7 +93,7 @@
         },
         {
           "name": "TransactionId",
-          "type": "uuid null (shadow FK)"
+          "type": "uuid null (orphaned)"
         },
         {
           "name": "Amount",
@@ -249,17 +249,17 @@
       "title": "No candidate ↔ return link",
       "items": [
         "ReturnsOfFunds has no ReturnOfFundCandidateId column",
-        "CreateReturnRequest carries no CandidateId either",
-        "The SLA tie-back has nothing to join on yet"
+        "CreateReturnRequest now carries the CandidateId",
+        "…but it is not persisted on the return"
       ]
     },
     {
       "dot": "amber",
-      "title": "Two transaction columns",
+      "title": "Transaction FK remapped",
       "items": [
-        "OriginTransactionId is set on create (unique index)",
-        "TransactionId backs the Transaction navigation and is never set",
-        "So Include(Transaction) is null in the pending job"
+        "b14ce7c5 maps Transaction onto OriginTransactionId",
+        "TransactionId column + FK are now unused",
+        "No migration yet to drop them or add the new FK"
       ]
     },
     {

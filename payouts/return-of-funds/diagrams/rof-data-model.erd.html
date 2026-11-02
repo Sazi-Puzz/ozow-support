@@ -5435,7 +5435,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 
             <text data-detail="context" x="574" y="125" class="t-primary" font-size="11">TransactionId</text>
-            <text data-detail="context" x="840" y="125" class="er-type" font-size="10.5" text-anchor="end">uuid null (shadow FK)</text>
+            <text data-detail="context" x="840" y="125" class="er-type" font-size="10.5" text-anchor="end">uuid null (orphaned)</text>
           </g>
           <g data-detail="context" data-er-row="3">
             <line x1="532" y1="130" x2="852" y2="130" class="c-grid er-row-rule" stroke-width="0.5"/>
@@ -5877,20 +5877,20 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </div>
         <ul>
           <li>ReturnsOfFunds has no ReturnOfFundCandidateId column</li>
-          <li>CreateReturnRequest carries no CandidateId either</li>
-          <li>The SLA tie-back has nothing to join on yet</li>
+          <li>CreateReturnRequest now carries the CandidateId</li>
+          <li>…but it is not persisted on the return</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot amber"></div>
-          <h3>Two transaction columns</h3>
+          <h3>Transaction FK remapped</h3>
         </div>
         <ul>
-          <li>OriginTransactionId is set on create (unique index)</li>
-          <li>TransactionId backs the Transaction navigation and is never set</li>
-          <li>So Include(Transaction) is null in the pending job</li>
+          <li>b14ce7c5 maps Transaction onto OriginTransactionId</li>
+          <li>TransactionId column + FK are now unused</li>
+          <li>No migration yet to drop them or add the new FK</li>
         </ul>
       </div>
 

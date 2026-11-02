@@ -2,50 +2,280 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Return of Funds — Statement Candidate vs PayShap Entry",
+    "title": "Return of Funds — Statement Candidate vs PayShap Entry (agreed Oct 2026)",
     "quality_profile": "showcase",
-    "output": "payouts/return-of-funds/diagrams/rof-payshap.workflow.html"
+    "output": "payouts/return-of-funds/diagrams/rof-payshap.workflow.html",
+    "views": [
+      {
+        "id": "statement",
+        "label": "Statement candidate path",
+        "focus": [
+          "stmt",
+          "candidate",
+          "eligibility",
+          "outcome_q",
+          "lambda",
+          "api",
+          "created"
+        ],
+        "note": "MSS nominates; PayIn answers on the outcome queue with the CandidateId; the Lambda calls the API."
+      },
+      {
+        "id": "payshap",
+        "label": "PayShap path",
+        "focus": [
+          "ps_pay",
+          "ps_id",
+          "ps_call",
+          "api",
+          "created"
+        ],
+        "note": "Special Projects calls CreateReturnOfFunds directly — no queue, no CandidateId, no wait for clearing."
+      },
+      {
+        "id": "shared",
+        "label": "Shared from the API on",
+        "focus": [
+          "api",
+          "created",
+          "submit"
+        ],
+        "note": "Both paths land in the same ReturnService and the same 15-minute PPI submission job."
+      }
+    ]
   },
   "lanes": [
-    { "id": "statement", "label": "Statement candidate path (built)" },
-    { "id": "payshap", "label": "PayShap path (proposed)" },
-    { "id": "moneyout", "label": "MoneyOut Returns" },
-    { "id": "risk", "label": "Open risk / undecided", "variant": "exception" }
+    {
+      "id": "statement",
+      "label": "Statement candidate path (built)"
+    },
+    {
+      "id": "moneyout",
+      "label": "MoneyOut Returns"
+    },
+    {
+      "id": "payshap",
+      "label": "PayShap path (agreed)"
+    }
   ],
   "phases": [
-    { "id": "origin", "label": "Origin", "fromCol": 0, "toCol": 1 },
-    { "id": "decide", "label": "Decide", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
-    { "id": "create", "label": "Create", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+    {
+      "id": "origin",
+      "label": "Origin",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "decide",
+      "label": "Decide",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "create",
+      "label": "Create + pay",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
   ],
-  "mainPath": ["stmt", "candidate", "eligibility", "outcome_q", "gate", "created"],
+  "mainPath": [
+    "stmt",
+    "candidate",
+    "eligibility",
+    "outcome_q",
+    "lambda",
+    "api",
+    "created"
+  ],
   "nodes": [
-    { "id": "stmt", "lane": "statement", "col": 0, "type": "external", "label": "Bank statement", "sublabel": "credit, no PayIn match" },
-    { "id": "candidate", "lane": "statement", "col": 1, "type": "backend", "label": "Unallocated λ", "sublabel": "CandidateId stamped" },
-    { "id": "eligibility", "lane": "statement", "col": 2, "type": "external", "label": "PayIn", "sublabel": "eligibility check" },
-    { "id": "ps_pay", "lane": "payshap", "col": 0, "type": "external", "label": "PayShap PayIn", "sublabel": "ShapID + ID number" },
-    { "id": "ps_id", "lane": "payshap", "col": 1, "type": "security", "label": "Identity check", "sublabel": "Special Projects", "tag": "cached AVS first" },
-    { "id": "ps_req", "lane": "payshap", "col": 2, "type": "external", "label": "RoF instruction", "sublabel": "no CandidateId" },
-    { "id": "outcome_q", "lane": "moneyout", "col": 3, "type": "messagebus", "label": "outcome queue", "sublabel": "FIFO, DLQ after 2" },
-    { "id": "gate", "lane": "moneyout", "col": 4, "type": "security", "label": "In statement?", "sublabel": "cleared or unallocated" },
-    { "id": "created", "lane": "moneyout", "col": 5, "type": "backend", "label": "Return created", "sublabel": "excluded from settlement" },
-    { "id": "dropped", "lane": "risk", "col": 4, "type": "security", "label": "Return null", "sublabel": "nothing persisted" },
-    { "id": "trigger", "lane": "risk", "col": 5, "type": "external", "label": "Funding trigger?", "sublabel": "FinOps lump-sum" }
+    {
+      "id": "stmt",
+      "lane": "statement",
+      "col": 0,
+      "type": "external",
+      "label": "Bank statement",
+      "sublabel": "credit, no PayIn match"
+    },
+    {
+      "id": "candidate",
+      "lane": "statement",
+      "col": 1,
+      "type": "backend",
+      "label": "Unallocated λ",
+      "sublabel": "CandidateId stamped"
+    },
+    {
+      "id": "eligibility",
+      "lane": "statement",
+      "col": 2,
+      "type": "external",
+      "label": "PayIn",
+      "sublabel": "eligibility check"
+    },
+    {
+      "id": "outcome_q",
+      "lane": "statement",
+      "col": 3,
+      "type": "messagebus",
+      "label": "outcome queue",
+      "sublabel": "echoes CandidateId"
+    },
+    {
+      "id": "lambda",
+      "lane": "moneyout",
+      "col": 3,
+      "type": "backend",
+      "label": "RoF processor λ",
+      "sublabel": "SQS → HTTP"
+    },
+    {
+      "id": "api",
+      "lane": "moneyout",
+      "col": 4,
+      "type": "backend",
+      "label": "CreateReturnOfFunds",
+      "sublabel": "MoneyOut API"
+    },
+    {
+      "id": "created",
+      "lane": "moneyout",
+      "col": 5,
+      "type": "backend",
+      "label": "Return created",
+      "sublabel": "excluded from settlement"
+    },
+    {
+      "id": "submit",
+      "lane": "payshap",
+      "col": 5,
+      "type": "external",
+      "label": "PPI credit push",
+      "sublabel": "15-min job, both paths"
+    },
+    {
+      "id": "ps_pay",
+      "lane": "payshap",
+      "col": 0,
+      "type": "external",
+      "label": "PayShap PayIn",
+      "sublabel": "via InstaPay"
+    },
+    {
+      "id": "ps_id",
+      "lane": "payshap",
+      "col": 1,
+      "type": "security",
+      "label": "Identity check",
+      "sublabel": "Special Projects",
+      "tag": "cached AVS first"
+    },
+    {
+      "id": "ps_call",
+      "lane": "payshap",
+      "col": 2,
+      "type": "external",
+      "label": "Direct API call",
+      "sublabel": "no CandidateId",
+      "tag": "no clearing wait"
+    }
   ],
   "edges": [
-    { "id": "e-stmt", "from": "stmt", "to": "candidate" },
-    { "id": "e-cand", "from": "candidate", "to": "eligibility", "label": "candidate", "variant": "emphasis" },
-    { "id": "e-elig", "from": "eligibility", "to": "outcome_q", "label": "eligible", "variant": "emphasis" },
-    { "id": "e-gate", "from": "outcome_q", "to": "gate" },
-    { "id": "e-created", "from": "gate", "to": "created", "label": "yes", "variant": "emphasis" },
-    { "id": "e-ps1", "from": "ps_pay", "to": "ps_id" },
-    { "id": "e-ps2", "from": "ps_id", "to": "ps_req", "label": "mismatch", "variant": "security" },
-    { "id": "e-ps3", "from": "ps_req", "to": "outcome_q", "label": "instruction", "variant": "dashed", "role": "branch" },
-    { "id": "e-null", "from": "gate", "to": "dropped", "label": "not yet", "variant": "security", "role": "error" },
-    { "id": "e-trigger", "from": "dropped", "to": "trigger", "label": "needs decision", "variant": "dashed", "role": "branch" }
+    {
+      "id": "e-stmt",
+      "from": "stmt",
+      "to": "candidate"
+    },
+    {
+      "id": "e-cand",
+      "from": "candidate",
+      "to": "eligibility",
+      "label": "candidate",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-elig",
+      "from": "eligibility",
+      "to": "outcome_q",
+      "label": "eligible",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-q",
+      "from": "outcome_q",
+      "to": "lambda",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-lam",
+      "from": "lambda",
+      "to": "api",
+      "label": "POST",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-created",
+      "from": "api",
+      "to": "created",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-submit",
+      "from": "created",
+      "to": "submit",
+      "label": "Created → PPI",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "e-ps1",
+      "from": "ps_pay",
+      "to": "ps_id"
+    },
+    {
+      "id": "e-ps2",
+      "from": "ps_id",
+      "to": "ps_call",
+      "label": "mismatch",
+      "variant": "security"
+    },
+    {
+      "id": "e-ps3",
+      "from": "ps_call",
+      "to": "api",
+      "label": "POST",
+      "variant": "dashed",
+      "role": "branch"
+    }
   ],
   "cards": [
-    { "dot": "cyan", "title": "Statement path", "items": ["Money is already proven on a statement", "CandidateId ties the outcome to the unallocated row", "SLA measurable end to end"] },
-    { "dot": "amber", "title": "PayShap path", "items": ["Fraud-driven: identity mismatch after pay-in", "Clears via InstaPay, often days later", "No candidate, so no SLA tie-back"] },
-    { "dot": "rose", "title": "To decide (El-Dean / FinOps)", "items": ["Return before funds are cleared? Needs explicit sign-off", "Which event submits a held PayShap return", "Second scheduled job keyed on CandidateId absence"] }
+    {
+      "dot": "cyan",
+      "title": "Statement path",
+      "items": [
+        "Money already proven on our statement",
+        "CandidateId ties the outcome to the unallocated row",
+        "SLA measurable (stamp still to build)"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "PayShap decisions (Junaid, business)",
+      "items": [
+        "Returning before clearing is allowed",
+        "InstaPay sees its statement; MoneyOut doesn't",
+        "Calls the API directly — no outcome queue"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Still open for PayShap",
+      "items": [
+        "API has no [Authorize]; agree caller auth",
+        "Funding account and overdraw risk",
+        "Payer's real bank group for the credit"
+      ]
+    }
   ]
 }
