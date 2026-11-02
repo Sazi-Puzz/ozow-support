@@ -23,9 +23,9 @@
         "focus": [
           "api",
           "db",
-          "mssapi"
+          "oe"
         ],
-        "note": "Statement evidence, idempotency, settlement removal, then persist."
+        "note": "ReturnService stamps the candidate, de-duplicates, imports the transaction in any status, deletes in-flight settlement rows and persists."
       }
     ],
     "viewBox": [
@@ -65,10 +65,10 @@
       "sublabel": "PostgreSQL"
     },
     {
-      "id": "mssapi",
-      "type": "backend",
-      "label": "MSS API",
-      "sublabel": "settlements"
+      "id": "oe",
+      "type": "external",
+      "label": "OE / Dashboard",
+      "sublabel": "transaction source"
     }
   ],
   "segments": [
@@ -109,36 +109,36 @@
       "from": "api",
       "to": "db",
       "y": 300,
-      "label": "in statement?",
+      "label": "stamp eligibility result",
       "variant": "default"
-    },
-    {
-      "from": "db",
-      "to": "api",
-      "y": 334,
-      "label": "cleared / unallocated",
-      "variant": "return"
     },
     {
       "from": "api",
       "to": "db",
-      "y": 368,
+      "y": 334,
       "label": "existing return?",
       "variant": "default"
     },
     {
       "from": "api",
-      "to": "mssapi",
-      "y": 402,
-      "label": "remove from settlement",
+      "to": "oe",
+      "y": 368,
+      "label": "get txn (any status)",
       "variant": "dashed"
     },
     {
-      "from": "mssapi",
+      "from": "oe",
       "to": "api",
-      "y": 436,
-      "label": "removed / refused",
+      "y": 402,
+      "label": "ExternalTransactionDto",
       "variant": "return"
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "y": 436,
+      "label": "delete in-flight settlement rows",
+      "variant": "default"
     },
     {
       "from": "api",
@@ -167,19 +167,19 @@
       "to": 512
     },
     {
-      "participant": "mssapi",
-      "from": 396,
-      "to": 444
+      "participant": "oe",
+      "from": 362,
+      "to": 410
     }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Create gates",
+      "title": "Create gates (09e24178)",
       "items": [
-        "No statement evidence → return null, nothing created",
-        "Existing RoF for the transaction → idempotent replay",
-        "Settled → removal attempt, else PendingInvestigation"
+        "Candidate row stamped with result + received time",
+        "OE lookup only when MoneyOut lacks the transaction",
+        "Settled (Submitted/Complete) still gets Created"
       ]
     }
   ]

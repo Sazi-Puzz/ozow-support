@@ -1,0 +1,301 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Return of Funds — What's Next (path to release, as of 2 Nov 2026)",
+    "quality_profile": "showcase",
+    "output": "payouts/return-of-funds/diagrams/rof-whats-next.workflow.html",
+    "views": [
+      {
+        "id": "moneyout",
+        "label": "MoneyOut fixes",
+        "focus": [
+          "mo_status",
+          "mo_settle",
+          "mo_lambda",
+          "mo_merge"
+        ],
+        "note": "The status path, the settled-transaction guard and the Lambda's SQS handling all have to change before end-to-end testing means anything."
+      },
+      {
+        "id": "others",
+        "label": "MSS, PPI, callers",
+        "focus": [
+          "mss_fix",
+          "mss_merge",
+          "ppi_check",
+          "ppi_deploy",
+          "payin_contract",
+          "payin_ready"
+        ],
+        "note": "MSS needs a 'sent' filter; PPI only needs its release branch deployed; PayIn and Special Projects need agreed contracts."
+      },
+      {
+        "id": "release",
+        "label": "Release",
+        "focus": [
+          "mo_merge",
+          "mss_merge",
+          "ppi_deploy",
+          "payin_ready",
+          "e2e",
+          "prod"
+        ],
+        "note": "All four repos deploy release/Return-of-funds together; the SNS filter and queues already exist in Terraform."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "mss",
+      "label": "moneyout-settlement-services"
+    },
+    {
+      "id": "mo",
+      "label": "moneyout (API + Lambdas + DB)"
+    },
+    {
+      "id": "release",
+      "label": "Together",
+      "variant": "exception"
+    },
+    {
+      "id": "ppi",
+      "label": "payment-provider-interface"
+    },
+    {
+      "id": "callers",
+      "label": "PayIn + Special Projects"
+    }
+  ],
+  "phases": [
+    {
+      "id": "unblock",
+      "label": "1 · Unblock",
+      "fromCol": 0,
+      "toCol": 1,
+      "variant": "emphasis"
+    },
+    {
+      "id": "harden",
+      "label": "2 · Harden + merge",
+      "fromCol": 2,
+      "toCol": 3
+    },
+    {
+      "id": "ship",
+      "label": "3 · Test + ship",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "mo_status",
+    "mo_settle",
+    "mo_lambda",
+    "mo_merge",
+    "e2e",
+    "prod"
+  ],
+  "nodes": [
+    {
+      "id": "mss_fix",
+      "lane": "mss",
+      "col": 0,
+      "type": "backend",
+      "label": "Sent filter",
+      "sublabel": "stop re-sending",
+      "tag": "C1"
+    },
+    {
+      "id": "mss_merge",
+      "lane": "mss",
+      "col": 3,
+      "type": "backend",
+      "label": "Merge PR #351",
+      "sublabel": "+ DLQ, settings"
+    },
+    {
+      "id": "mo_status",
+      "lane": "mo",
+      "col": 0,
+      "type": "security",
+      "label": "Status path",
+      "sublabel": "route + Created",
+      "tag": "R4 · R22"
+    },
+    {
+      "id": "mo_settle",
+      "lane": "mo",
+      "col": 1,
+      "type": "security",
+      "label": "Settled guard",
+      "sublabel": "investigate, recalc",
+      "tag": "R20 · R21"
+    },
+    {
+      "id": "mo_lambda",
+      "lane": "mo",
+      "col": 2,
+      "type": "backend",
+      "label": "Lambda SQS",
+      "sublabel": "URL, IAM, failures",
+      "tag": "R9"
+    },
+    {
+      "id": "mo_merge",
+      "lane": "mo",
+      "col": 3,
+      "type": "backend",
+      "label": "Merge PR #3301",
+      "sublabel": "+ FK migration",
+      "tag": "R1"
+    },
+    {
+      "id": "e2e",
+      "lane": "release",
+      "col": 4,
+      "type": "external",
+      "label": "E2E in staging",
+      "sublabel": "4 repos, one branch"
+    },
+    {
+      "id": "prod",
+      "lane": "release",
+      "col": 5,
+      "type": "external",
+      "label": "Production",
+      "sublabel": "monitor + SLA"
+    },
+    {
+      "id": "ppi_check",
+      "lane": "ppi",
+      "col": 1,
+      "type": "backend",
+      "label": "Confirm routing",
+      "sublabel": "provider per bank"
+    },
+    {
+      "id": "ppi_deploy",
+      "lane": "ppi",
+      "col": 3,
+      "type": "backend",
+      "label": "Deploy PPI",
+      "sublabel": "PR #1531 release"
+    },
+    {
+      "id": "payin_contract",
+      "lane": "callers",
+      "col": 1,
+      "type": "external",
+      "label": "Outcome contract",
+      "sublabel": "PayIn message"
+    },
+    {
+      "id": "payin_ready",
+      "lane": "callers",
+      "col": 3,
+      "type": "external",
+      "label": "PayShap caller",
+      "sublabel": "auth + funding",
+      "tag": "R17"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-mss",
+      "from": "mss_fix",
+      "to": "mss_merge",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-mo1",
+      "from": "mo_status",
+      "to": "mo_settle",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-mo2",
+      "from": "mo_settle",
+      "to": "mo_lambda",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-mo3",
+      "from": "mo_lambda",
+      "to": "mo_merge",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-ppi",
+      "from": "ppi_check",
+      "to": "ppi_deploy"
+    },
+    {
+      "id": "e-payin",
+      "from": "payin_contract",
+      "to": "payin_ready"
+    },
+    {
+      "id": "e-in-mss",
+      "from": "mss_merge",
+      "to": "e2e",
+      "variant": "dashed"
+    },
+    {
+      "id": "e-in-mo",
+      "from": "mo_merge",
+      "to": "e2e",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-in-ppi",
+      "from": "ppi_deploy",
+      "to": "e2e",
+      "variant": "dashed"
+    },
+    {
+      "id": "e-in-payin",
+      "from": "payin_ready",
+      "to": "e2e",
+      "variant": "dashed"
+    },
+    {
+      "id": "e-ship",
+      "from": "e2e",
+      "to": "prod",
+      "label": "go",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Must fix (money at risk)",
+      "items": [
+        "R21 settled txn still returned → double pay",
+        "R22 PPI Created re-queues → duplicate push",
+        "R20 deleted rows leave settlement totals stale"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Must fix (feature dead)",
+      "items": [
+        "R4 status route 404",
+        "R9 Lambda queue URL + IAM",
+        "C1 candidates re-sent, CandidateId overwritten"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Already in place",
+      "items": [
+        "PPI treats ReturnOfFund as a Refund",
+        "SNS filter includes ReturnOfFund",
+        "Queues, Lambda, EventBridge rule in Terraform"
+      ]
+    }
+  ]
+}

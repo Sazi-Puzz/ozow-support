@@ -2,45 +2,55 @@
   "schema_version": 1,
   "diagram_type": "sequence",
   "meta": {
-    "title": "Return of Funds — Submit to PPI and Status Feedback",
+    "title": "Return of Funds — Submit to PPI, Pay Out, and Status Feedback",
     "quality_profile": "showcase",
     "output": "payouts/return-of-funds/diagrams/rof-submit-and-status.sequence.html",
     "column_fit": "spread",
     "views": [
       {
         "id": "submit",
-        "label": "Finalise and submit",
+        "label": "Submit",
         "focus": [
           "rof",
           "api",
           "db",
-          "ppi"
+          "orch"
         ],
-        "note": "A 15-minute schedule finalises Created returns and pushes a credit instruction to PPI."
+        "note": "Every 15 minutes the API takes Created returns, marks them AwaitingSubmissionToPPI and queues a credit push."
+      },
+      {
+        "id": "ppi",
+        "label": "Inside PPI",
+        "focus": [
+          "orch",
+          "instr",
+          "topic"
+        ],
+        "note": "PPI saves the instruction, publishes Created at once, then routes ReturnOfFund down the Refund path to the bank."
       },
       {
         "id": "status",
-        "label": "Status feedback",
+        "label": "Status back",
         "focus": [
-          "ppi",
+          "topic",
           "status",
           "api",
           "db"
         ],
-        "note": "PPI status updates come back through the shared status Lambda."
+        "note": "Statuses come back through the SNS filter and the shared status Lambda; the Lambda's URL does not match the controller yet."
       }
     ],
     "viewBox": [
       1080,
-      560
+      690
     ]
   },
   "participants": [
     {
       "id": "rof",
       "type": "backend",
-      "label": "RoF processor λ",
-      "sublabel": "moneyout"
+      "label": "RoF λ",
+      "sublabel": "every 15 min"
     },
     {
       "id": "api",
@@ -52,31 +62,48 @@
       "id": "db",
       "type": "database",
       "label": "MoneyOut DB",
-      "sublabel": "PostgreSQL"
+      "sublabel": "ReturnsOfFunds"
     },
     {
-      "id": "ppi",
+      "id": "orch",
+      "type": "backend",
+      "label": "Orchestration",
+      "sublabel": "ppi2 λ"
+    },
+    {
+      "id": "instr",
       "type": "external",
-      "label": "PPI",
-      "sublabel": "credit push"
+      "label": "PPI → bank",
+      "sublabel": "ppi2 λ → provider"
+    },
+    {
+      "id": "topic",
+      "type": "messagebus",
+      "label": "Status topic",
+      "sublabel": "SNS → moneyout2 fifo"
     },
     {
       "id": "status",
       "type": "backend",
       "label": "Status λ",
-      "sublabel": "status update"
+      "sublabel": "moneyout2"
     }
   ],
   "segments": [
     {
       "from": 156,
       "to": 294,
-      "label": "Finalise + submit (cron 0/15)"
+      "label": "Submit (MoneyOut)"
     },
     {
       "from": 314,
       "to": 418,
-      "label": "Status"
+      "label": "Pay out (PPI, Refund route)"
+    },
+    {
+      "from": 438,
+      "to": 576,
+      "label": "Status back (MoneyOut)"
     }
   ],
   "messages": [
@@ -91,7 +118,7 @@
       "from": "api",
       "to": "db",
       "y": 210,
-      "label": "Status = Created",
+      "label": "take Status = Created",
       "variant": "default"
     },
     {
@@ -103,30 +130,58 @@
     },
     {
       "from": "api",
-      "to": "ppi",
+      "to": "orch",
       "y": 278,
-      "label": "CreateCreditPush",
+      "label": "CreateCreditPush (SQS)",
       "variant": "emphasis"
     },
     {
-      "from": "ppi",
-      "to": "status",
+      "from": "orch",
+      "to": "topic",
       "y": 334,
-      "label": "status topic",
+      "label": "status: Created",
+      "variant": "dashed"
+    },
+    {
+      "from": "orch",
+      "to": "instr",
+      "y": 368,
+      "label": "instruction",
+      "variant": "emphasis"
+    },
+    {
+      "from": "instr",
+      "to": "topic",
+      "y": 402,
+      "label": "Pending → Successful",
+      "variant": "dashed"
+    },
+    {
+      "from": "topic",
+      "to": "status",
+      "y": 458,
+      "label": "ReturnOfFund only",
       "variant": "dashed"
     },
     {
       "from": "status",
       "to": "api",
-      "y": 368,
-      "label": "POST status update",
+      "y": 492,
+      "label": "POST …/ProcessReturnStatusUpdate",
       "variant": "dashed"
     },
     {
       "from": "api",
+      "to": "status",
+      "y": 526,
+      "label": "404 today",
+      "variant": "return"
+    },
+    {
+      "from": "api",
       "to": "db",
-      "y": 402,
-      "label": "Status + history",
+      "y": 560,
+      "label": "after fix: Created → Created",
       "variant": "default"
     }
   ],
@@ -137,28 +192,33 @@
       "to": 286
     },
     {
+      "participant": "orch",
+      "from": 272,
+      "to": 376
+    },
+    {
       "participant": "api",
-      "from": 362,
-      "to": 410
+      "from": 486,
+      "to": 568
     }
   ],
   "cards": [
     {
       "dot": "emerald",
-      "title": "Submission",
+      "title": "What PPI does with it",
       "items": [
-        "Only Status = Created is picked up",
-        "OriginInternalReference = ReturnOfFund Id",
-        "OriginInternalType = ReturnOfFund"
+        "OriginInternalType = ReturnOfFund, ref = RoF Id",
+        "IsRefundRoute: same providers as a Refund",
+        "NedbankCps retry + FTI matching include it"
       ]
     },
     {
       "dot": "rose",
-      "title": "Known gaps",
+      "title": "Fix before go-live",
       "items": [
-        "Status λ URL ≠ controller route on DIG-7556",
-        "Failed queue leaves AwaitingSubmissionToPPI",
-        "PayIn → MSS SLA stamp not written yet"
+        "Lambda URL ≠ ProcessReturnOfFundStatusUpdate",
+        "PPI Created maps to ReturnStatusId.Created",
+        "So the 15-min job re-submits → Duplicated"
       ]
     }
   ]
